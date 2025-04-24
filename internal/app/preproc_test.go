@@ -176,12 +176,12 @@ func TestSeparate(t *testing.T) {
 	wg.Wait()
 }
 
-type NumTest struct {
+type ExprTest struct {
 	expr     string
 	expected bool
 }
 
-var numTests []NumTest = []NumTest{
+var numTests []ExprTest = []ExprTest{
 	{"2", true},
 	{"5916", true},
 	{"2.51", true},
@@ -211,12 +211,8 @@ func TestValidateNumber(t *testing.T) {
 	wg.Wait()
 }
 
-type ParseTest struct {
-	expr     string
-	expected bool
-}
-
-var parseTests []ParseTest = []ParseTest{
+// May god forgive me for this unholy creation
+var parseTests []ExprTest = []ExprTest{
 	{"(, , ,-, ,15.2, , ,^, , ,2, , ,), , ,*, , ,(, , ,-, ,27.4, , ,+, , ,(, , ,8.6, , ,*, , ,-, ,4.1, , ,), , ,)", true},
 	{"-, ,(, ,9.7, , ,^, , ,0.4, , ,) , ,+, , ,21.3, , ,^, ,(, ,-, ,0.5, , ,)", true},
 	{"(, ,-, ,31.5, , ,*, , ,(, ,6.9, , ,^, , ,2, , ,) , ,) , ,/, , ,(, ,3.8, , ,+, , ,-, ,7.2, , ,)", true},
@@ -252,6 +248,47 @@ func TestParse(t *testing.T) {
 
 			if result != test.expected {
 				t.Errorf("Test %s:\n - got  %t\n - want %t", test.expr, result, test.expected)
+			}
+		}()
+	}
+
+	wg.Wait()
+}
+
+var validationTests []ExprTest = []ExprTest{
+	{"(-2.5 + 3.7) * 4 ^ 2", true},
+	{"5 * (3.14 / -2) + 7.8", true},
+	{"2 ^ (1 + 3) - 4.0 / 2", true},
+	{"-10.25 + 5 * (2 - 3.5)", true},
+	{"( ( 1.5 + 2.5 ) * 3 ) / -.0", true},
+	{"2.5 + + 3", false},
+	{"(3.14 * 2", false},
+	{"1.2.3 + 4", false},
+	{" 3 * (2 + )", false},
+	{"4 ^ 2 a + 1", false},
+	{"((5 + 3) * 2))", false},
+	{"- * 3 + 2", false},
+	{".5 + 2.", false},
+	{"()", false},
+}
+
+func TestValidate(t *testing.T) {
+	t.Parallel()
+
+	wg := sync.WaitGroup{}
+
+	for _, test := range validationTests {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err := Validate(test.expr)
+
+			if e(err) == test.expected {
+				if e(err) {
+					t.Errorf("Test %s:\n - got  %s\n - want no error", test.expr, err.Error())
+				} else {
+					t.Errorf("Test %s: want error", test.expr)
+				}
 			}
 		}()
 	}

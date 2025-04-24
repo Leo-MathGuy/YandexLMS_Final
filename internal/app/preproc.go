@@ -175,24 +175,20 @@ func parse(types []int, separated [][]rune) bool {
 		case number:
 			switch cur {
 			case number:
-				fmt.Printf("Num after num, %d", i)
 				return false // Num after num
 			case parentheses:
 				if separated[i-1-spaceOffset][0] == '(' {
-					fmt.Printf("Opening par after num, %d", i)
-					return false // Opening par after num
+					return false // ( after num
 				}
 			}
 		case parentheses:
 			switch cur {
 			case number:
 				if separated[i-1-spaceOffset][0] == ')' {
-					fmt.Printf("Num after closing par, %d", i)
-					return false // Num after closing par
+					return false // Num after )
 				}
 			case parentheses:
 				if separated[i-1-spaceOffset][0] != separated[i][0] {
-					fmt.Printf("() or )(, %d, %v != %v, SO=%d", i, string(separated[i-1-spaceOffset][0]), string(separated[i][0]), spaceOffset)
 					return false // () or )(
 				}
 			}
@@ -200,13 +196,15 @@ func parse(types []int, separated [][]rune) bool {
 			switch cur {
 			case operator:
 				if separated[i][0] != '-' {
-					fmt.Printf("Op after op, %d", i)
 					return false // Op after op
 				} else if !unary {
 					unary = true
 				} else {
-					fmt.Printf("Too many -, %d", i)
 					return false // Too many -
+				}
+			case parentheses:
+				if separated[i][0] == ')' {
+					return false // ) after op
 				}
 			}
 		}
