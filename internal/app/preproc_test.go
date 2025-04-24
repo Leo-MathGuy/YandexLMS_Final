@@ -1,4 +1,4 @@
-package preproc
+package app
 
 import (
 	"strconv"
@@ -289,6 +289,134 @@ func TestValidate(t *testing.T) {
 				} else {
 					t.Errorf("Test %s: want error", test.expr)
 				}
+			}
+		}()
+	}
+
+	wg.Wait()
+}
+
+type TokenizeTest struct {
+	expr     string
+	expected []ExprToken
+}
+
+func (t *ExprToken) toString() string {
+	if t.tokenType == number {
+		return strconv.FormatInt(int64(t.tokenType), 10) + " - " + strconv.FormatFloat(*t.valueF, 'f', -1, 64)
+	} else {
+		return strconv.FormatInt(int64(t.tokenType), 10) + " - " + strconv.FormatInt(int64(*t.valueI), 10)
+	}
+}
+
+func floatPtr(n float64) *float64 {
+	v := n
+	return &v
+}
+
+func intPtr(n int) *int {
+	v := n
+	return &v
+}
+
+var tokenizeTests []TokenizeTest = []TokenizeTest{
+	{"5  +3", []ExprToken{
+		{number, floatPtr(5.0), nil},
+		{operator, nil, intPtr(int('+'))},
+		{number, floatPtr(3.0), nil},
+	}},
+	{"(4 * 2) / 3", []ExprToken{
+		{parentheses, nil, intPtr(int('('))},
+		{number, floatPtr(4.0), nil},
+		{operator, nil, intPtr(int('*'))},
+		{number, floatPtr(2.0), nil},
+		{parentheses, nil, intPtr(int(')'))},
+		{operator, nil, intPtr(int('/'))},
+		{number, floatPtr(3.0), nil},
+	}},
+	{"2 ^ (3 + (4*-2))", []ExprToken{
+		{number, floatPtr(2.0), nil},
+		{operator, nil, intPtr(int('^'))},
+		{parentheses, nil, intPtr(int('('))},
+		{number, floatPtr(3.0), nil},
+		{operator, nil, intPtr(int('+'))},
+		{parentheses, nil, intPtr(int('('))},
+		{number, floatPtr(4.0), nil},
+		{operator, nil, intPtr(int('*'))},
+		{operator, nil, intPtr(int('-'))},
+		{number, floatPtr(2.0), nil},
+		{parentheses, nil, intPtr(int(')'))},
+		{parentheses, nil, intPtr(int(')'))},
+	}},
+	{"-1 * ( 2.5^ 2 -4/ ( 1 + 3 ))", []ExprToken{
+		{operator, nil, intPtr(int('-'))},
+		{number, floatPtr(1.0), nil},
+		{operator, nil, intPtr(int('*'))},
+		{parentheses, nil, intPtr(int('('))},
+		{number, floatPtr(2.5), nil},
+		{operator, nil, intPtr(int('^'))},
+		{number, floatPtr(2.0), nil},
+		{operator, nil, intPtr(int('-'))},
+		{number, floatPtr(4.0), nil},
+		{operator, nil, intPtr(int('/'))},
+		{parentheses, nil, intPtr(int('('))},
+		{number, floatPtr(1.0), nil},
+		{operator, nil, intPtr(int('+'))},
+		{number, floatPtr(3.0), nil},
+		{parentheses, nil, intPtr(int(')'))},
+		{parentheses, nil, intPtr(int(')'))},
+	}},
+}
+
+func TestTokenize(t *testing.T) {
+	t.Parallel()
+
+	wg := sync.WaitGroup{}
+
+	for _, test := range tokenizeTests {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			sep, err := Separate([]rune(test.expr))
+			if e(err) {
+				t.Errorf("separate failed: %s", err.Error())
+			}
+			result, err := Tokenize(sep)
+			if e(err) {
+				t.Errorf("function failed: %s", err.Error())
+			}
+
+			if len(test.expected) != len(result) {
+				err := "Test %s - wrong length:\n - got:\n"
+
+				for _, v := range result {
+					err += " - - " + v.toString() + "\n"
+				}
+				err += " - want:\n"
+				for _, v := range test.expected {
+					err += " - - " + v.toString() + "\n"
+				}
+				t.Errorf(err, test.expr)
+				return
+			}
+
+			for i, v := range test.expected {
+				r := result[i]
+				if r.tokenType != v.tokenType || v.tokenType == number && *r.valueF != *v.valueF || v.tokenType != number && *r.valueI != *v.valueI {
+					err := "Test %s - wrong at %d:\n - got:\n"
+
+					for _, v := range result {
+						err += " - - " + v.toString() + "\n"
+					}
+					err += " - want:\n"
+					for _, v := range test.expected {
+						err += " - - " + v.toString() + "\n"
+					}
+
+					t.Errorf(err, test.expr, i)
+					return
+				}
+
 			}
 		}()
 	}

@@ -1,8 +1,9 @@
-package preproc
+package app
 
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -226,4 +227,37 @@ func parse(types []int, separated [][]rune) bool {
 	}
 
 	return !op && parenStack == 0
+}
+
+// // Tokenization
+type ExprToken struct {
+	tokenType int
+	valueF    *float64
+	valueI    *int
+}
+
+// Tokenize an expression for generation
+func Tokenize(separated [][]rune) ([]ExprToken, error) {
+	result := make([]ExprToken, 0)
+
+	for _, v := range separated {
+		ct, err := charType(v[0])
+		if e(err) {
+			return result, fmt.Errorf("charType error in tokenization")
+		}
+
+		switch ct {
+		case number:
+			value, err := strconv.ParseFloat(string(v), 64)
+			if e(err) {
+				return result, fmt.Errorf("cannot parse number: %s", string(v))
+			}
+			result = append(result, ExprToken{ct, &value, nil})
+		case parentheses, operator:
+			value := int(rune(v[0]))
+			result = append(result, ExprToken{ct, nil, &value})
+		}
+	}
+
+	return result, nil
 }
