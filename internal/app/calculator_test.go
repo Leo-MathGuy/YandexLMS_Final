@@ -77,7 +77,7 @@ var evalTests []EvalTest = []EvalTest{
 			{operator, nil, IntPtr(int('-'))},
 			{number, FloatPtr(1.0), nil},
 		},
-		"[-2.5+[3*4]-1]",
+		"[-2.5+[[3*4]-1]]",
 	},
 	{
 		"-(2 * (3.5 / -7 + 1))",
@@ -96,7 +96,7 @@ var evalTests []EvalTest = []EvalTest{
 			{parentheses, nil, IntPtr(int(')'))},
 			{parentheses, nil, IntPtr(int(')'))},
 		},
-		"[-[2*[3.5/-7+1]]]",
+		"[-1*[2*[[3.5/-7]+1]]]",
 	}, {
 		"-(5--3*5+-(4/-2))",
 		[]ExprToken{
@@ -118,18 +118,14 @@ var evalTests []EvalTest = []EvalTest{
 			{parentheses, nil, IntPtr(int(')'))},
 			{parentheses, nil, IntPtr(int(')'))},
 		},
-		"[-[5-[-3*5]+-[4/-2]]]",
+		"[-1*[5-[[-3*5]+[-1*[4/-2]]]]]",
 	},
 }
 
 func TestEval(t *testing.T) {
 	wg := sync.WaitGroup{}
 
-	for i, test := range evalTests {
-		if i != 2 {
-			continue
-		}
-
+	for _, test := range evalTests {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// The node of the AST
 type Node struct {
 	isValue bool
 	value   *float64
@@ -15,6 +16,7 @@ type Node struct {
 	parent  *Node
 }
 
+// For testing purposes
 func (n *Node) toString() string {
 	if n.isValue {
 		return strconv.FormatFloat(*n.value, 'f', -1, 64)
@@ -23,146 +25,78 @@ func (n *Node) toString() string {
 	}
 }
 
+// Levels of the Recursive Descent Parsing algorithm
 const (
 	expr = iota
 	term
 	factor
 )
 
+// Function to test the NodeGen function specifically
 type nodeproc func([]ExprToken, uint, nodeproc, int) *Node
 
-// Generate AST
+// Recursive Descent Parsing algorithm
 func NodeGen(tokens []ExprToken, mode uint, f nodeproc, level int) *Node {
-	fmt.Print("Entering on level " + fmt.Sprint(level))
+	// Shortcut for number values
 	if len(tokens) == 1 {
-		fmt.Println(" returning single value " + fmt.Sprint(*tokens[0].valueF))
 		return &Node{true, tokens[0].valueF, nil, nil, nil, nil}
 	}
 
-	sep := ""
 	root := Node{}
+	currentNode := &root
+	currentExpr := make([]ExprToken, 0)
+	paren := 0
 
 	switch mode {
-	case expr:
-		fmt.Println(" mode +-")
-		sep = "+-"
-	case term:
-		fmt.Println(" mode */")
-		sep = "*/"
-	case factor:
-		// THIS SHOULD NEVER HAPPEN
-		fmt.Println(" should not happen factor:")
+	case expr, term:
+		sep := "*/" // What separates groups
+		if mode == expr {
+			sep = "+-"
+		}
+
 		for _, v := range tokens {
-			if v.tokenType == number {
-				fmt.Printf(" - Number - %f\n", *v.valueF)
-			} else {
-				fmt.Printf(" - %d - %s\n", v.tokenType, string(rune(*v.valueI)))
-			}
-		}
-
-		panic("skill issue")
-	}
-
-	curPart := make([]ExprToken, 0)
-	current := &root
-	skip := 0
-	parCount := 0
-	next := true
-	skipGen := false
-
-	for i, v := range tokens {
-		fmt.Printf("%d - ", i)
-
-		if skip > 0 {
-			fmt.Println("Skip")
-			skip--
-			continue
-		}
-
-		switch v.tokenType {
-		case operator:
-			r := rune(*v.valueI)
-			if strings.Contains(sep, string(r)) && parCount == 0 {
-				if !skipGen {
-					current.left = f(curPart, mode+1, f, level+1)
-				} else {
-					skipGen = false
-				}
-				current.isValue = false
-				current.op = &r
-				current.right = &Node{}
-				current.right.parent = current
-				current = current.right
-				curPart = make([]ExprToken, 0)
-				next = true
-				fmt.Println("Op " + string(rune(r)))
-				continue
-			} else {
-				fmt.Println("Adding an op " + string(rune(*v.valueI)))
-			}
-		case parentheses:
-			if next {
-				subPar := 0
-				for j, x := range tokens[i+1:] {
-					skip++
-					if x.tokenType == parentheses {
-						if *x.valueI == int(')') {
-							if subPar == 0 {
-								fmt.Println("Entering parentheses")
-								generated := f(tokens[i+1:i+skip], expr, f, level+1)
-								for _, v := range tokens[i+1 : i+skip] {
-									if v.tokenType == number {
-										fmt.Printf("Added a %f\n", *v.valueF)
-									} else {
-										fmt.Printf("Added a %s\n", string(rune(*v.valueI)))
-									}
-								}
-								fmt.Println("Exiting parentheses")
-								if j+i == len(tokens)-2 {
-									current.parent.right = generated
-								} else {
-									current.left = generated
-								}
-								skipGen = true
-								break
-							} else {
-								subPar--
-							}
-						} else {
-							subPar++
-						}
-					}
-				}
-				continue
-			} else {
+			// Treat expression in parentheses as one group
+			if v.tokenType == parentheses {
 				switch rune(*v.valueI) {
 				case '(':
-					parCount++
+					paren++
 				case ')':
-					parCount--
+					paren--
 				}
-				fmt.Println("Adding a par " + string(rune(*v.valueI)))
 			}
-		default:
-			if v.tokenType == number {
-				fmt.Println("Adding a number " + fmt.Sprint(*v.valueF))
+
+			if v.tokenType == operator && strings.Contains(sep, string(rune(*v.valueI))) && paren == 0 {
+				// Advance the AST tree
+				currentNode.left = NodeGen(currentExpr, mode+1, f, level+1)
+				currentNode.right = &Node{}
+
+				currentNode.left.parent = currentNode
+				currentNode.right.parent = currentNode
+
+				currentNode.isValue = false
+				currentNode.op = RunePtr(rune(*v.valueI))
+				currentNode = currentNode.right
+				currentExpr = make([]ExprToken, 0)
 			} else {
-				fmt.Println("Adding a " + string(rune(*v.valueI)))
+				currentExpr = append(currentExpr, v)
 			}
-			next = false
 		}
-		curPart = append(curPart, v)
+
+		if currentNode.parent != nil {
+			// Finish the tree
+			currentNode.parent.right = NodeGen(currentExpr, mode+1, f, level+1)
+			return &root
+		} else {
+			// Only 1 group was found
+			return NodeGen(currentExpr, mode+1, f, level+1)
+		}
+
+	case factor:
+		// Parentheses expr
+		return NodeGen(tokens[1:len(tokens)-1], expr, f, level+1)
 	}
 
-	fmt.Printf("Exiting level %d\n", level)
-	if root.left != nil {
-		if !skipGen {
-			current.parent.right = f(curPart, mode+1, f, level+1)
-		}
-		return &root
-	} else {
-		return f(curPart, mode+1, f, level+1)
-	}
+	panic("no") // 🗿
 }
 
 // Assumes expression has passed validation
@@ -176,12 +110,9 @@ func Eval(tokens []ExprToken, f nodeproc) (*Node, error) {
 
 	for i, v := range tokens {
 		if v.tokenType == operator && *v.valueI == int('-') && (i == 0 || tokens[i-1].tokenType == operator) {
-			fmt.Printf("Detected a unary - at %d\n", i)
 			if tokens[i+1].tokenType == number {
-				fmt.Println(" - inverse")
 				*tokens[i+1].valueF *= -1
 			} else {
-				fmt.Println(" - -1 *")
 				processed = append(
 					processed,
 					ExprToken{number, FloatPtr(-1.0), nil},
