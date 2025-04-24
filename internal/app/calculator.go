@@ -56,25 +56,25 @@ func NodeGen(tokens []ExprToken, mode uint, f nodeproc, level int) *Node {
 			if v.tokenType == number {
 				fmt.Printf(" - Number - %f\n", *v.valueF)
 			} else {
-				fmt.Printf(" - %d - %d\n", v.tokenType, *v.valueI)
+				fmt.Printf(" - %d - %s\n", v.tokenType, string(rune(*v.valueI)))
 			}
 		}
 
-		// To guarantee segfault
-		return nil
+		panic("skill issue")
 	}
 
 	curPart := make([]ExprToken, 0)
 	current := &root
 	skip := 0
 	parCount := 0
-	next := false
+	next := true
 	skipGen := false
 
 	for i, v := range tokens {
 		fmt.Printf("%d - ", i)
 
 		if skip > 0 {
+			fmt.Println("Skip")
 			skip--
 			continue
 		}
@@ -124,6 +124,7 @@ func NodeGen(tokens []ExprToken, mode uint, f nodeproc, level int) *Node {
 									current.left = generated
 								}
 								skipGen = true
+								break
 							} else {
 								subPar--
 							}
@@ -153,6 +154,7 @@ func NodeGen(tokens []ExprToken, mode uint, f nodeproc, level int) *Node {
 		curPart = append(curPart, v)
 	}
 
+	fmt.Printf("Exiting level %d\n", level)
 	if root.left != nil {
 		if !skipGen {
 			current.parent.right = f(curPart, mode+1, f, level+1)
