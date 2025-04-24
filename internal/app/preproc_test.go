@@ -26,7 +26,7 @@ var charPass []CharValidationTest = []CharValidationTest{
 	{'-', true},
 	{' ', true},
 	{'/', true},
-	{'^', true},
+	{'^', false},
 	{'*', true},
 }
 
@@ -74,6 +74,7 @@ var typeFail []CharTypeTest = []CharTypeTest{
 	{';', -1},
 	{'⠀', -1}, // U+2800
 	{'🗿', -1},
+	{'^', -1},
 }
 
 var typePass []CharTypeTest = []CharTypeTest{
@@ -81,7 +82,6 @@ var typePass []CharTypeTest = []CharTypeTest{
 	{'+', operator},
 	{'/', operator},
 	{'*', operator},
-	{'^', operator},
 	{'(', parentheses},
 	{')', parentheses},
 	{' ', space},
@@ -128,8 +128,8 @@ type SepTest struct {
 var sepPass []SepTest = []SepTest{
 	{"simple", "2+2", "2,+,2"},
 	{"long", "5158812-125", "5158812,-,125"},
-	{"complex", "(-2^3 + (5 * (-4))^2) / -3", "(,-,2,^,3, ,+, ,(,5, ,*, ,(,-,4,),),^,2,), ,/, ,-,3"},
-	{"big", "-(42^52 * ((-533 * 155) + (-451^2531))) ^ 251", "-,(,42,^,52, ,*, ,(,(,-,533, ,*, ,155,), ,+, ,(,-,451,^,2531,),),), ,^, ,251"},
+	{"complex", "(-2*3 + (5 * (-4))*2) / -3", "(,-,2,*,3, ,+, ,(,5, ,*, ,(,-,4,),),*,2,), ,/, ,-,3"},
+	{"big", "-(42*52 * ((-533 * 155) + (-451*2531))) * 251", "-,(,42,*,52, ,*, ,(,(,-,533, ,*, ,155,), ,+, ,(,-,451,*,2531,),),), ,*, ,251"},
 }
 var sepFail []SepTest = []SepTest{
 	{"symbol", "2+&2", ""},
@@ -213,11 +213,11 @@ func TestValidateNumber(t *testing.T) {
 
 // May god forgive me for this unholy creation
 var parseTests []ExprTest = []ExprTest{
-	{"(, , ,-, ,15.2, , ,^, , ,2, , ,), , ,*, , ,(, , ,-, ,27.4, , ,+, , ,(, , ,8.6, , ,*, , ,-, ,4.1, , ,), , ,)", true},
-	{"-, ,(, ,9.7, , ,^, , ,0.4, , ,) , ,+, , ,21.3, , ,^, ,(, ,-, ,0.5, , ,)", true},
-	{"(, ,-, ,31.5, , ,*, , ,(, ,6.9, , ,^, , ,2, , ,) , ,) , ,/, , ,(, ,3.8, , ,+, , ,-, ,7.2, , ,)", true},
-	{"(, ,(, ,4.7, , ,+, , ,-, ,12.8, , ,) , ,^, , ,3, , ,) , ,-, ,-, ,(, ,25.6, , ,*, , ,2.3, , ,)", true},
-	{"-, ,(, ,(, ,17.4, , ,/, , ,-, ,5.5, , ,) , ,^, , ,2, , ,) , ,+, , ,(, ,7.1, , ,^, , ,1.7, , ,)", true},
+	{"(, , ,-, ,15.2, , ,*, , ,2, , ,), , ,*, , ,(, , ,-, ,27.4, , ,+, , ,(, , ,8.6, , ,*, , ,-, ,4.1, , ,), , ,)", true},
+	{"-, ,(, ,9.7, , ,*, , ,0.4, , ,) , ,+, , ,21.3, , ,*, ,(, ,-, ,0.5, , ,)", true},
+	{"(, ,-, ,31.5, , ,*, , ,(, ,6.9, , ,*, , ,2, , ,) , ,) , ,/, , ,(, ,3.8, , ,+, , ,-, ,7.2, , ,)", true},
+	{"(, ,(, ,4.7, , ,+, , ,-, ,12.8, , ,) , ,*, , ,3, , ,) , ,-, ,-, ,(, ,25.6, , ,*, , ,2.3, , ,)", true},
+	{"-, ,(, ,(, ,17.4, , ,/, , ,-, ,5.5, , ,) , ,*, , ,2, , ,) , ,+, , ,(, ,7.1, , ,*, , ,1.7, , ,)", true},
 }
 
 func TestParse(t *testing.T) {
@@ -256,16 +256,16 @@ func TestParse(t *testing.T) {
 }
 
 var validationTests []ExprTest = []ExprTest{
-	{"(-2.5 + 3.7) * 4 ^ 2", true},
+	{"(-2.5 + 3.7) * 4 * 2", true},
 	{"5 * (3.14 / -2) + 7.8", true},
-	{"2 ^ (1 + 3) - 4.0 / 2", true},
+	{"2 * (1 + 3) - 4.0 / 2", true},
 	{"-10.25 + 5 * (2 - 3.5)", true},
 	{"( ( 1.5 + 2.5 ) * 3 ) / -.0", true},
 	{"2.5 + + 3", false},
 	{"(3.14 * 2", false},
 	{"1.2.3 + 4", false},
 	{" 3 * (2 + )", false},
-	{"4 ^ 2 a + 1", false},
+	{"4 * 2 a + 1", false},
 	{"((5 + 3) * 2))", false},
 	{"- * 3 + 2", false},
 	{".5 + 2.", false},
@@ -309,62 +309,52 @@ func (t *ExprToken) toString() string {
 	}
 }
 
-func floatPtr(n float64) *float64 {
-	v := n
-	return &v
-}
-
-func intPtr(n int) *int {
-	v := n
-	return &v
-}
-
 var tokenizeTests []TokenizeTest = []TokenizeTest{
 	{"5  +3", []ExprToken{
-		{number, floatPtr(5.0), nil},
-		{operator, nil, intPtr(int('+'))},
-		{number, floatPtr(3.0), nil},
+		{number, FloatPtr(5.0), nil},
+		{operator, nil, IntPtr(int('+'))},
+		{number, FloatPtr(3.0), nil},
 	}},
 	{"(4 * 2) / 3", []ExprToken{
-		{parentheses, nil, intPtr(int('('))},
-		{number, floatPtr(4.0), nil},
-		{operator, nil, intPtr(int('*'))},
-		{number, floatPtr(2.0), nil},
-		{parentheses, nil, intPtr(int(')'))},
-		{operator, nil, intPtr(int('/'))},
-		{number, floatPtr(3.0), nil},
+		{parentheses, nil, IntPtr(int('('))},
+		{number, FloatPtr(4.0), nil},
+		{operator, nil, IntPtr(int('*'))},
+		{number, FloatPtr(2.0), nil},
+		{parentheses, nil, IntPtr(int(')'))},
+		{operator, nil, IntPtr(int('/'))},
+		{number, FloatPtr(3.0), nil},
 	}},
-	{"2 ^ (3 + (4*-2))", []ExprToken{
-		{number, floatPtr(2.0), nil},
-		{operator, nil, intPtr(int('^'))},
-		{parentheses, nil, intPtr(int('('))},
-		{number, floatPtr(3.0), nil},
-		{operator, nil, intPtr(int('+'))},
-		{parentheses, nil, intPtr(int('('))},
-		{number, floatPtr(4.0), nil},
-		{operator, nil, intPtr(int('*'))},
-		{operator, nil, intPtr(int('-'))},
-		{number, floatPtr(2.0), nil},
-		{parentheses, nil, intPtr(int(')'))},
-		{parentheses, nil, intPtr(int(')'))},
+	{"2 * (3 + (4*-2))", []ExprToken{
+		{number, FloatPtr(2.0), nil},
+		{operator, nil, IntPtr(int('*'))},
+		{parentheses, nil, IntPtr(int('('))},
+		{number, FloatPtr(3.0), nil},
+		{operator, nil, IntPtr(int('+'))},
+		{parentheses, nil, IntPtr(int('('))},
+		{number, FloatPtr(4.0), nil},
+		{operator, nil, IntPtr(int('*'))},
+		{operator, nil, IntPtr(int('-'))},
+		{number, FloatPtr(2.0), nil},
+		{parentheses, nil, IntPtr(int(')'))},
+		{parentheses, nil, IntPtr(int(')'))},
 	}},
-	{"-1 * ( 2.5^ 2 -4/ ( 1 + 3 ))", []ExprToken{
-		{operator, nil, intPtr(int('-'))},
-		{number, floatPtr(1.0), nil},
-		{operator, nil, intPtr(int('*'))},
-		{parentheses, nil, intPtr(int('('))},
-		{number, floatPtr(2.5), nil},
-		{operator, nil, intPtr(int('^'))},
-		{number, floatPtr(2.0), nil},
-		{operator, nil, intPtr(int('-'))},
-		{number, floatPtr(4.0), nil},
-		{operator, nil, intPtr(int('/'))},
-		{parentheses, nil, intPtr(int('('))},
-		{number, floatPtr(1.0), nil},
-		{operator, nil, intPtr(int('+'))},
-		{number, floatPtr(3.0), nil},
-		{parentheses, nil, intPtr(int(')'))},
-		{parentheses, nil, intPtr(int(')'))},
+	{"-1 * ( 2.5* 2 -4/ ( 1 + 3 ))", []ExprToken{
+		{operator, nil, IntPtr(int('-'))},
+		{number, FloatPtr(1.0), nil},
+		{operator, nil, IntPtr(int('*'))},
+		{parentheses, nil, IntPtr(int('('))},
+		{number, FloatPtr(2.5), nil},
+		{operator, nil, IntPtr(int('*'))},
+		{number, FloatPtr(2.0), nil},
+		{operator, nil, IntPtr(int('-'))},
+		{number, FloatPtr(4.0), nil},
+		{operator, nil, IntPtr(int('/'))},
+		{parentheses, nil, IntPtr(int('('))},
+		{number, FloatPtr(1.0), nil},
+		{operator, nil, IntPtr(int('+'))},
+		{number, FloatPtr(3.0), nil},
+		{parentheses, nil, IntPtr(int(')'))},
+		{parentheses, nil, IntPtr(int(')'))},
 	}},
 }
 

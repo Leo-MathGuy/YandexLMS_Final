@@ -22,7 +22,7 @@ func e(err error) bool {
 }
 
 func validChar(char rune) (bool, error) {
-	return regexp.Match("[0-9\\+\\-*/()^ .]", []byte{byte(char)})
+	return regexp.Match("[0-9\\+\\-*/() .]", []byte{byte(char)})
 }
 
 func charType(char rune) (int, error) {
@@ -34,7 +34,7 @@ func charType(char rune) (int, error) {
 	matches := []RuneType{
 		{"[0-9.]", number},
 		{"[()]", parentheses},
-		{"[+\\-*\\/^]", operator},
+		{"[+\\-*\\/]", operator},
 		{" ", space},
 	}
 
