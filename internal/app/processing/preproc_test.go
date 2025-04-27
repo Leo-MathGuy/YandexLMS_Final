@@ -387,7 +387,6 @@ func TestTokenize(t *testing.T) {
 					err += " - - " + v.toString() + "\n"
 				}
 				t.Errorf(err, test.expr)
-				return
 			}
 
 			for i, v := range test.expected {

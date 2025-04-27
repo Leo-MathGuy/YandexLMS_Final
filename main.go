@@ -16,7 +16,7 @@ func waitForEnter(wg *sync.WaitGroup) {
 }
 
 func main() {
-	if _, err := os.Stat("logs"); os.IsNotExist(err) {
+	if _, err := os.Stat("web"); os.IsNotExist(err) {
 		panic("run main in main directory please")
 	}
 
