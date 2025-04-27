@@ -25,6 +25,15 @@ func (n *Node) toString() string {
 	}
 }
 
+// For testing purposes
+func (n *Node) toStringShort() string {
+	if n.isValue {
+		return strconv.FormatFloat(*n.value, 'f', -1, 64)
+	} else {
+		return fmt.Sprintf("%s%s%s", n.left.toStringShort(), string(*n.op), n.right.toStringShort())
+	}
+}
+
 // Levels of the Recursive Descent Parsing algorithm
 const (
 	expr = iota
@@ -36,6 +45,7 @@ const (
 type nodeproc func([]ExprToken, uint, nodeproc, int) *Node
 
 // Recursive Descent Parsing algorithm
+// CANNOT HANDLE UNARY
 func NodeGen(tokens []ExprToken, mode uint, f nodeproc, level int) *Node {
 	// Shortcut for number values
 	if len(tokens) == 1 {
@@ -67,7 +77,7 @@ func NodeGen(tokens []ExprToken, mode uint, f nodeproc, level int) *Node {
 
 			if v.tokenType == operator && strings.Contains(sep, string(rune(*v.valueI))) && paren == 0 {
 				// Advance the AST tree
-				currentNode.left = NodeGen(currentExpr, mode+1, f, level+1)
+				currentNode.left = f(currentExpr, mode+1, f, level+1)
 				currentNode.right = &Node{}
 
 				currentNode.left.parent = currentNode
@@ -84,16 +94,16 @@ func NodeGen(tokens []ExprToken, mode uint, f nodeproc, level int) *Node {
 
 		if currentNode.parent != nil {
 			// Finish the tree
-			currentNode.parent.right = NodeGen(currentExpr, mode+1, f, level+1)
+			currentNode.parent.right = f(currentExpr, mode+1, f, level+1)
 			return &root
 		} else {
 			// Only 1 group was found
-			return NodeGen(currentExpr, mode+1, f, level+1)
+			return f(currentExpr, mode+1, f, level+1)
 		}
 
 	case factor:
 		// Parentheses expr
-		return NodeGen(tokens[1:len(tokens)-1], expr, f, level+1)
+		return f(tokens[1:len(tokens)-1], expr, f, level+1)
 	}
 
 	panic("no") // 🗿
