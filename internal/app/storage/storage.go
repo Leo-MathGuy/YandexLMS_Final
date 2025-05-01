@@ -1,72 +1,46 @@
 package storage
 
 import (
-	"crypto/sha256"
-	"reflect"
-	"strings"
-	"sync"
-	"time"
+	"fmt"
 
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/logging"
+
+	"database/sql"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
-// MARK: Users
-type User struct {
-	login    string
-	passHash [32]byte
-}
+// MARK: DB
+var db *sql.DB
 
-type Users struct {
-	users map[string]*User
-	sync.RWMutex
-}
-
-var U Users
-
-func InitUsers() {
-	U = Users{}
-	U.users = make(map[string]*User)
-}
-
-func (u *Users) AddUser(login, password string) {
-	u.Lock()
-	defer u.Unlock()
-	p := &User{login, sha256.Sum256([]byte(password))}
-	u.users[strings.ToLower(login)] = p
-}
-
-func (u *Users) UserExists(login string) (exists bool) {
-	u.RLock()
-	defer u.RUnlock()
-
-	_, exists = u.users[strings.ToLower(login)]
-	return exists
-}
-
-func (u *Users) CheckPass(login, password string) (correct bool) {
-	u.RLock()
-	defer u.RUnlock()
-
-	return reflect.DeepEqual(sha256.Sum256([]byte(password)), u.users[strings.ToLower(login)].passHash)
-}
-
-// MARK: JWT
-var secretKey = []byte("ultra-secret-key")
-
-func CreateToken(username string) (string, error) {
-	now := time.Now()
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
-		jwt.MapClaims{
-			"user": strings.ToLower(username),
-			"nbf":  now.Add(time.Minute).Unix(),
-			"exp":  now.Add(30 * time.Minute).Unix(),
-			"iat":  now.Unix(),
-		})
-
-	tokenString, err := token.SignedString(secretKey)
+func ConnectDB() {
+	database, err := sql.Open("sqlite3", "./sqlite3.db")
 	if err != nil {
-		return "", err
+		logging.Panic("DB Failed")
 	}
+	db = database
+}
 
-	return tokenString, nil
+func query(q string) (sql.Result, error) {
+	if db == nil {
+		logging.Error("Database not connected")
+		return nil, fmt.Errorf("database not connected")
+	}
+	if res, err := db.Exec(q); err != nil {
+		return nil, err
+	} else {
+		return res, nil
+	}
+}
+
+func createTables() {
+	if _, err := query(`
+	CREATE TABLE IF NOT EXISTS Users (
+	id INT AUTO_INCREMENT PRIMARY KEY
+	login VARCHAR(32) NOT NULL UNIQUE
+	passHash BLOB(32) NOT NULL
+	)
+	`); err != nil {
+		logging.Panic(err.Error())
+	}
 }

@@ -8,29 +8,29 @@ import (
 
 // The node of the AST
 type Node struct {
-	isValue bool
-	value   *float64
-	left    *Node
-	right   *Node
-	op      *rune
-	parent  *Node
+	IsValue bool
+	Value   *float64
+	Left    *Node
+	Right   *Node
+	Op      *rune
+	Parent  *Node
 }
 
 // For testing purposes
 func (n *Node) toString() string {
-	if n.isValue {
-		return strconv.FormatFloat(*n.value, 'f', -1, 64)
+	if n.IsValue {
+		return strconv.FormatFloat(*n.Value, 'f', -1, 64)
 	} else {
-		return fmt.Sprintf("[%s%s%s]", n.left.toString(), string(*n.op), n.right.toString())
+		return fmt.Sprintf("[%s%s%s]", n.Left.toString(), string(*n.Op), n.Right.toString())
 	}
 }
 
 // For testing purposes
 func (n *Node) toStringShort() string {
-	if n.isValue {
-		return strconv.FormatFloat(*n.value, 'f', -1, 64)
+	if n.IsValue {
+		return strconv.FormatFloat(*n.Value, 'f', -1, 64)
 	} else {
-		return fmt.Sprintf("%s%s%s", n.left.toStringShort(), string(*n.op), n.right.toStringShort())
+		return fmt.Sprintf("%s%s%s", n.Left.toStringShort(), string(*n.Op), n.Right.toStringShort())
 	}
 }
 
@@ -77,24 +77,24 @@ func NodeGen(tokens []ExprToken, mode uint, f nodeproc, level int) *Node {
 
 			if v.tokenType == operator && strings.Contains(sep, string(rune(*v.valueI))) && paren == 0 {
 				// Advance the AST tree
-				currentNode.left = f(currentExpr, mode+1, f, level+1)
-				currentNode.right = &Node{}
+				currentNode.Left = f(currentExpr, mode+1, f, level+1)
+				currentNode.Right = &Node{}
 
-				currentNode.left.parent = currentNode
-				currentNode.right.parent = currentNode
+				currentNode.Left.Parent = currentNode
+				currentNode.Right.Parent = currentNode
 
-				currentNode.isValue = false
-				currentNode.op = RunePtr(rune(*v.valueI))
-				currentNode = currentNode.right
+				currentNode.IsValue = false
+				currentNode.Op = RunePtr(rune(*v.valueI))
+				currentNode = currentNode.Right
 				currentExpr = make([]ExprToken, 0)
 			} else {
 				currentExpr = append(currentExpr, v)
 			}
 		}
 
-		if currentNode.parent != nil {
+		if currentNode.Parent != nil {
 			// Finish the tree
-			currentNode.parent.right = f(currentExpr, mode+1, f, level+1)
+			currentNode.Parent.Right = f(currentExpr, mode+1, f, level+1)
 			return &root
 		} else {
 			// Only 1 group was found

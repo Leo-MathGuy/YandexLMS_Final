@@ -7,7 +7,6 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/logging"
-	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/storage"
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/web/handlers"
 )
 
@@ -27,7 +26,7 @@ func createServer() *mux.Router {
 }
 
 func initServer() {
-	storage.InitUsers()
+
 }
 
 func RunServer() {
