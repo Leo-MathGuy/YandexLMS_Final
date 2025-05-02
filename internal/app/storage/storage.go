@@ -20,9 +20,9 @@ import (
 
 // MARK: TYPES
 type User struct {
-	id       uint
-	login    string
-	passhash []byte
+	ID       uint
+	Login    string
+	Passhash []byte
 }
 
 type Expression struct {
@@ -101,7 +101,7 @@ func GetUsers(db *sql.DB) ([]*User, error) {
 
 	for rows.Next() {
 		var curUser User
-		err := rows.Scan(&curUser.id, &curUser.login, &curUser.passhash)
+		err := rows.Scan(&curUser.ID, &curUser.Login, &curUser.Passhash)
 		if err != nil {
 			break
 		}
@@ -113,7 +113,7 @@ func GetUsers(db *sql.DB) ([]*User, error) {
 func GetUser(db *sql.DB, login string) (*User, error) {
 	var u User
 	row := db.QueryRow("SELECT * FROM Users WHERE login = ?", strings.ToLower(login))
-	err := row.Scan(&u.id, &u.login, &u.passhash)
+	err := row.Scan(&u.ID, &u.Login, &u.Passhash)
 	if err != nil {
 		return &User{}, err
 	}
@@ -135,20 +135,20 @@ func CheckPass(db *sql.DB, login, password string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return reflect.DeepEqual(sha256.Sum256([]byte(password)), user.passhash), nil
+	hash := sha256.Sum256([]byte(password))
+	return reflect.DeepEqual(hash[:], user.Passhash), nil
 }
 
 // MARK: JWT
 var secretKey = []byte("ultra-secret-key")
 
 func CreateToken(username string) (string, error) {
-	now := time.Now()
+	now := time.Now().UTC()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
 		jwt.MapClaims{
 			"user": strings.ToLower(username),
-			"nbf":  now.Add(time.Minute).Unix(),
-			"exp":  now.Add(30 * time.Minute).Unix(),
-			"iat":  now.Unix(),
+			"exp":  now.Add(30 * time.Minute).UnixMilli(),
+			"iat":  now.UnixMilli(),
 		})
 
 	tokenString, err := token.SignedString(secretKey)
@@ -159,39 +159,75 @@ func CreateToken(username string) (string, error) {
 	return tokenString, nil
 }
 
+func CheckToken(db *sql.DB, token string) (*User, error) {
+	t, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
+		return secretKey, nil
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+
+	if err != nil {
+		return nil, err
+	}
+
+	if claims, ok := t.Claims.(jwt.MapClaims); ok {
+		now := time.Now().UTC()
+		expire := time.UnixMilli(int64(claims["exp"].(float64)))
+		if now.After(expire) {
+			return nil, nil
+		} else if user, err := GetUser(db, claims["user"].(string)); err != nil {
+			return nil, err
+		} else {
+			return user, nil
+		}
+	} else {
+		return nil, fmt.Errorf("token expired")
+	}
+}
+
 // MARK: Expressions
 var E Expressions = Expressions{make(map[uint]*Expression), sync.RWMutex{}}
 
 func LoadExpression(e *Expressions, id, uid uint, str string, result float64, done bool) error {
-	if sep, err := processing.Separate([]rune(str)); err != nil {
+	var eval *processing.Node
+
+	if done {
+		eval = nil
+	} else if sep, err := processing.Separate([]rune(str)); err != nil {
 		return err
 	} else if tokens, err := processing.Tokenize(sep); err != nil {
 		return err
-	} else if eval, err := processing.Eval(tokens, processing.NodeGen); err != nil {
+	} else if eval, err = processing.Eval(tokens, processing.NodeGen); err != nil {
 		return err
-	} else {
-		e.Lock()
-		defer e.Unlock()
-		expr := &Expression{id, uid, str, result, done, eval, make([]float64, 0)}
-		e.E[id] = expr
 	}
+
+	e.Lock()
+	defer e.Unlock()
+	expr := &Expression{id, uid, str, result, done, eval, make([]float64, 0)}
+	e.E[id] = expr
+
 	return nil
 }
 
-func AddExpression(e *Expressions, db *sql.DB, uid uint, str string) error {
+func AddExpression(e *Expressions, db *sql.DB, uid uint, str string) (uint, error) {
 	if _, err := db.Exec("INSERT INTO Expressions (uid, expr) VALUES (?, ?)", uid, str); err != nil {
-		return err
+		return 0, err
 	}
 
 	r := db.QueryRow("SELECT (id) FROM Expressions order by rowid desc LIMIT 1", uid, str)
 
-	var id uint
+	var id uint = 0
 	r.Scan(&id)
 	if err := LoadExpression(e, id, uid, str, 0, false); err != nil {
-		return err
+		db.Exec("DELETE FROM Expressions WHERE id=?", id) // Attempt to clear - no error checking here
+		return 0, err
 	}
 
-	return r.Err()
+	if err := r.Err(); err != nil {
+		return 0, err
+	} else if id == 0 {
+		return 0, fmt.Errorf("what")
+	} else {
+		return id, nil
+	}
 }
 
 // Load expressions from db - generating node trees may take some time

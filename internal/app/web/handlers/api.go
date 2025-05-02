@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"regexp"
 
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/logging"
+	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/processing"
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/storage"
 )
 
@@ -14,7 +16,7 @@ type AuthRequest struct {
 	Password string `json:"password"`
 }
 
-func Register(w http.ResponseWriter, r *http.Request) {
+func RegisterAPI(w http.ResponseWriter, r *http.Request) {
 	var data AuthRequest
 	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
@@ -22,7 +24,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if x, _ := regexp.MatchString("^[A-Za-z][A-Za-z0-9_-]{2,31}$", data.Login); !x {
+	if x, _ := regexp.MatchString("^[A-Za-z][A-Za-z0-9_\\-]{2,31}$", data.Login); !x {
 		http.Error(w, "Invalid username", http.StatusBadRequest)
 		return
 	}
@@ -35,6 +37,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	if n, err := storage.UserExists(storage.D, data.Login); err != nil {
 		logging.Error("Failed getting user exists: %s", err.Error())
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	} else if n {
 		http.Error(w, "User exists", http.StatusBadRequest)
 		return
@@ -45,7 +48,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 }
 
-func Login(w http.ResponseWriter, r *http.Request) {
+func LoginAPI(w http.ResponseWriter, r *http.Request) {
 	var data AuthRequest
 	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
@@ -75,9 +78,61 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		logging.Error("Failure to create JWT token: %s\n", err.Error())
 		return
 	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    jwt,
+		Path:     "/",
+		MaxAge:   1800,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	})
 	w.Write([]byte(jwt))
 }
 
-func Calculate(w http.ResponseWriter, r *http.Request) {
+type CalcRequest struct {
+	Expr  string `json:"expression"`
+	Token string `json:"token"`
+}
 
+type CalcResponse struct {
+	ID uint `json:"id"`
+}
+
+func Calculate(w http.ResponseWriter, r *http.Request) {
+	var data CalcRequest
+	err := json.NewDecoder(r.Body).Decode(&data)
+	if err != nil {
+		http.Error(w, "Cannot read JSON", http.StatusBadRequest)
+		return
+	}
+
+	var u *storage.User
+
+	if user, err := storage.CheckToken(storage.D, data.Token); err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	} else if user == nil {
+		http.Error(w, "Token expired", http.StatusForbidden)
+		return
+	} else {
+		u = user
+	}
+
+	validation := processing.Validate(data.Expr)
+	if validation != nil {
+		http.Error(w, fmt.Sprintf("Invalid expression: %s", validation.Error()), http.StatusBadRequest)
+		return
+	}
+
+	if id, err := storage.AddExpression(&storage.E, storage.D, u.ID, data.Expr); err != nil {
+		logging.Error("Error adding expression: %s", err.Error())
+		http.Error(w, "Internal server error", http.StatusBadRequest)
+	} else if response, err := json.Marshal(&CalcResponse{id}); err != nil {
+		logging.Error("Error marhshaling response: %s", err.Error())
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	} else {
+		w.Write(response)
+	}
 }

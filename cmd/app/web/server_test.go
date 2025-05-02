@@ -155,4 +155,6 @@ func TestServer(t *testing.T) {
 			t.Fatalf("expected error")
 		}
 	})
+
+	t.Run("expressions", func(t *testing.T) {})
 }

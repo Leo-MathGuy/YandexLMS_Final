@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/static/styles.css" />
+    <title>Calculator!!</title>
+</head>
+
+<body>
+    {{template "navbar"}}
+    <header>
+        <h1>{{.Name}}</h1>
+    </header>
+    <main>
+        <form action="/api/v1/{{.Link}}" method="post" id="form">
+            <label for="login">Username:
+                <input type="text" name="login" minlength="3" maxlength="32" pattern="^[A-Za-z][A-Za-z0-9_\-]{2,31}$"
+                    required>
+            </label>
+            {{ if .ShowInfo }}
+            <p>Username:
+            <ul>
+                <li>Starts with a letter</li>
+                <li>Can contain letters, numbers, - and _</li>
+                <li>3-32 length</li>
+            </ul>
+            </p>
+            {{end}}
+            <label for="login">Password:
+                <input type="password" name="password" minlength="3" maxlength="32" required>
+            </label>
+            {{ if .ShowInfo }}
+            <p>Password:
+            <ul>
+                <li>3-32 length</li>
+            </ul>
+            </p>
+            {{end}}
+            <input id="submit" type="submit" value="{{.Name}}" disabled>
+            <p id="error"></p>
+        </form>
+    </main>
+    <script src="/static/form.js"></script>
+</body>
+
+</html>

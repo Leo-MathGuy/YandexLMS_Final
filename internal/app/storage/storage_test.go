@@ -68,14 +68,23 @@ func TestStorage(t *testing.T) {
 			if len(users) != 2 {
 				t.Error("Not 2 users")
 			} else {
-				if users[0].login != "bob" {
+				if users[0].Login != "bob" {
 					t.Error("WHERE IS BOB")
 				}
-				if users[1].login != "eve" {
+				if users[1].Login != "eve" {
 					t.Error("No eve")
 				}
 			}
 		}
+
+		if token, err := CreateToken("bob"); err != nil {
+			t.Fatalf("Token creation failed: %s", err.Error())
+		} else if out, err := CheckToken(db, token); err != nil {
+			t.Errorf("Error checking token: %s", err.Error())
+		} else if out == nil {
+			t.Errorf("Token not validated")
+		}
+
 	})
 
 	if !proceed {
@@ -89,7 +98,7 @@ func TestStorage(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Cannot get bob: %s", err.Error())
 		}
-		if err := AddExpression(&e, db, bob.id, "2+2"); err != nil {
+		if _, err := AddExpression(&e, db, bob.ID, "2+2"); err != nil {
 			t.Fatalf("Cannot add expr: %s", err.Error())
 		}
 
@@ -99,7 +108,7 @@ func TestStorage(t *testing.T) {
 
 		ex := e.E[1]
 
-		if ex.UID != bob.id {
+		if ex.UID != bob.ID {
 			t.Error("Wrong UID")
 		}
 		if ex.Gen.Left == nil || ex.Gen.Right == nil || *ex.Gen.Left.Value != 2.0 || *ex.Gen.Right.Value != 2.0 {
