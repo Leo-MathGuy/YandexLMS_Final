@@ -9,9 +9,12 @@ import (
 
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/logging"
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/storage"
+	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/util"
 )
 
 func ParseTemplates() *template.Template {
+	util.Leave()
+
 	templ := template.New("")
 	err := filepath.Walk("./web", func(path string, info os.FileInfo, err error) error {
 		if strings.Contains(path, ".html") {
