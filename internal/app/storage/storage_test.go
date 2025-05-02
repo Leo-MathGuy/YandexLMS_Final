@@ -2,38 +2,134 @@ package storage
 
 import (
 	"crypto/sha256"
+	"database/sql"
+	"os"
+	"reflect"
+	"sync"
 	"testing"
+
+	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/util"
 )
 
-func TestUsers(t *testing.T) {
-	users := Users{}
-	users.users = make(map[string]*User)
+func TestStorage(t *testing.T) {
+	util.Leave()
+	os.Remove("test.db")
+	defer os.Remove("test.db")
 
-	users.AddUser("Bob", "123")
+	db, _ := sql.Open("sqlite3", "./test.db")
+	err := db.Ping()
+	if err != nil {
+		t.Fatalf("DB Failed womp womp")
+	}
+	CreateTables(db)
 
-	if bob, found := users.users["bob"]; !found {
-		t.Fatalf("bob not added")
-	} else if bob.passHash != sha256.Sum256([]byte("123")) {
-		t.Errorf("wrong hash")
+	proceed := t.Run("User", func(t *testing.T) {
+		if err := AddUser(db, "bob", "123"); err != nil {
+			t.Fatal(err.Error())
+		}
+
+		if n, _ := UserExists(db, "bob"); !n {
+			t.Fatal("bob not found")
+		}
+		if n, _ := UserExists(db, "Bob"); !n {
+			t.Error("Bob not found")
+		}
+		if n, _ := UserExists(db, "tom"); n {
+			t.Fatal("tom was found")
+		}
+
+		user1, err1 := GetUser(db, "bob")
+		user2, err2 := GetUser(db, "Bob")
+		_, err3 := GetUser(db, "alice")
+
+		if user1 == nil || user2 == nil || err1 != nil || err2 != nil {
+			t.Fatalf("bob was not gotten")
+		}
+
+		if !reflect.DeepEqual(*user1, *user2) {
+			t.Error("bob =/= Bob :(")
+		}
+
+		h := sha256.Sum256([]byte("123"))
+		bobExpect := &User{1, "bob", h[:]}
+		if !reflect.DeepEqual(*user1, *bobExpect) {
+			t.Error("bob isn't expected bob")
+		}
+
+		if err3 == nil {
+			t.Error("alice was found")
+		}
+
+		AddUser(db, "eVe", "456")
+		users, err := GetUsers(db)
+		if err != nil {
+			t.Error(err.Error())
+		} else {
+			if len(users) != 2 {
+				t.Error("Not 2 users")
+			} else {
+				if users[0].login != "bob" {
+					t.Error("WHERE IS BOB")
+				}
+				if users[1].login != "eve" {
+					t.Error("No eve")
+				}
+			}
+		}
+	})
+
+	if !proceed {
+		return
 	}
 
-	if !users.UserExists("bob") {
-		t.Fatalf("user check returned false")
-	}
-	if !users.UserExists("Bob") {
-		t.Errorf("user check returned false")
-	}
-	if users.UserExists("alex") {
-		t.Errorf("user check returned true")
-	}
+	t.Run("Expression", func(t *testing.T) {
+		e := Expressions{make(map[uint]*Expression), sync.RWMutex{}}
 
-	if !users.CheckPass("bob", "123") {
-		t.Errorf("password check returned false")
-	}
-	if !users.CheckPass("Bob", "123") {
-		t.Errorf("password check returned false")
-	}
-	if users.CheckPass("bob", "1234") {
-		t.Errorf("password check returned true")
-	}
+		bob, err := GetUser(db, "bob")
+		if err != nil {
+			t.Fatalf("Cannot get bob: %s", err.Error())
+		}
+		if err := AddExpression(&e, db, bob.id, "2+2"); err != nil {
+			t.Fatalf("Cannot add expr: %s", err.Error())
+		}
+
+		if len(e.E) < 1 {
+			t.Fatalf("Nothing was added")
+		}
+
+		ex := e.E[1]
+
+		if ex.UID != bob.id {
+			t.Error("Wrong UID")
+		}
+		if ex.Gen.Left == nil || ex.Gen.Right == nil || *ex.Gen.Left.Value != 2.0 || *ex.Gen.Right.Value != 2.0 {
+			t.Error("Wrong values")
+		}
+		if *ex.Gen.Op != rune('+') {
+			t.Error("Wrong op")
+		}
+
+		if ex.Finished {
+			t.Error("Finished, but not expected to be")
+		}
+
+		if ex.Result != 0.0 {
+			t.Error("Result non zero")
+		}
+
+		e = Expressions{make(map[uint]*Expression), sync.RWMutex{}}
+		if err := LoadExpressions(db, &e); err != nil {
+			t.Fatalf("Error loading: %s", err.Error())
+		}
+
+		if len(e.E) < 1 {
+			t.Fatalf("Nothing was added 2")
+		}
+
+		ex2 := e.E[1]
+
+		if !reflect.DeepEqual(*ex, *ex2) {
+			t.Errorf("Not loaded correctly")
+		}
+	})
 }

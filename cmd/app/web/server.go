@@ -18,8 +18,10 @@ func createServer() *mux.Router {
 
 	mux.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./web/static"))))
 
-	mux.HandleFunc("/api/v1/register", handlers.Register)
-	mux.HandleFunc("/api/v1/login", handlers.Login)
+	mux.HandleFunc("/api/v1/register", handlers.Register).Methods("POST")
+	mux.HandleFunc("/api/v1/login", handlers.Login).Methods("POST")
+
+	mux.HandleFunc("/api/v1/calculate", handlers.Calculate).Methods("POST")
 
 	mux.HandleFunc("/", handlers.Index)
 	return mux

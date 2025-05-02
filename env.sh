@@ -1,1 +1,0 @@
-export WORKSPACE_DIR=${cwd}

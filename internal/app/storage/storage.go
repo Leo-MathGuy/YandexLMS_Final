@@ -3,6 +3,7 @@ package storage
 import (
 	"crypto/sha256"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"sync"
@@ -11,81 +12,139 @@ import (
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/logging"
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/processing"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 
 	"database/sql"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// MARK: TYPES
+type User struct {
+	id       uint
+	login    string
+	passhash []byte
+}
+
+type Expression struct {
+	ID       uint
+	UID      uint
+	Expr     string
+	Result   float64
+	Finished bool
+
+	Gen  *processing.Node
+	Done []float64
+}
+
+type Expressions struct {
+	E map[uint]*Expression
+	sync.RWMutex
+}
+
 // MARK: DB
-var db *sql.DB
+var D *sql.DB
+var defaultDb string = "sqlite3.db"
 
+// Connect DB to the public D variable
 func ConnectDB() {
-	database, err := sql.Open("sqlite3", "./sqlite3.db")
-	if err != nil {
-		logging.Panic("DB Failed")
-	}
-	db = database
-}
-
-func query(q string) (sql.Result, error) {
-	if db == nil {
-		logging.Error("Database not connected")
-		return nil, fmt.Errorf("database not connected")
-	}
-	if res, err := db.Exec(q); err != nil {
-		return nil, err
+	var database *sql.DB
+	if s := os.Getenv("APPDB"); s != "" {
+		database, _ = sql.Open("sqlite3", "./sqlite3.db")
 	} else {
-		return res, nil
+		database, _ = sql.Open("sqlite3", defaultDb)
 	}
+
+	// Check connection
+	err := database.Ping()
+	if err != nil {
+		logging.Panic("DB Failed womp womp")
+	}
+	D = database
 }
 
-func createTables() {
-	if _, err := query(`
+func CreateTables(db *sql.DB) error {
+	_, err := db.Exec(`
 	CREATE TABLE IF NOT EXISTS Users (
-	id INT AUTO_INCREMENT PRIMARY KEY
-	login VARCHAR(32) NOT NULL UNIQUE
-	passHash BLOB(32) NOT NULL
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	login VARCHAR(32) NOT NULL UNIQUE,
+	passhash BLOB(32) NOT NULL
+	);
+
+	CREATE TABLE IF NOT EXISTS Expressions (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	uid INT NOT NULL,
+	expr STRING NOT NULL,
+	result DOUBLE DEFAULT 0,
+	done BOOLEAN DEFAULT FALSE
 	)
+	`)
+	return err
+}
+
+func DropTables(db *sql.DB) {
+	if _, err := db.Exec(`
+	DROP TABLE Users;
+	DROP TABLE Expressions
 	`); err != nil {
 		logging.Panic(err.Error())
 	}
 }
 
-// MARK: Users
-type User struct {
-	login    string
-	passHash [32]byte
+// MARK: USERS
+func AddUser(db *sql.DB, login, password string) error {
+	passhash := sha256.Sum256([]byte(password))
+	username := strings.ToLower(login)
+	if _, err := db.Exec("INSERT INTO Users (login, passhash) VALUES (?, ?)", username, passhash[:]); err != nil {
+		return err
+	}
+	return nil
 }
 
-type Users struct {
-	users map[string]*User
-	sync.RWMutex
+func GetUsers(db *sql.DB) ([]*User, error) {
+	result := make([]*User, 0)
+	rows, err := db.Query("SELECT * FROM Users")
+	if err != nil {
+		return result, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var curUser User
+		err := rows.Scan(&curUser.id, &curUser.login, &curUser.passhash)
+		if err != nil {
+			break
+		}
+		result = append(result, &curUser)
+	}
+	return result, nil
 }
 
-var U Users
+func GetUser(db *sql.DB, login string) (*User, error) {
+	var u User
+	row := db.QueryRow("SELECT * FROM Users WHERE login = ?", strings.ToLower(login))
+	err := row.Scan(&u.id, &u.login, &u.passhash)
+	if err != nil {
+		return &User{}, err
+	}
 
-func (u *Users) AddUser(login, password string) {
-	u.Lock()
-	defer u.Unlock()
-	p := &User{login, sha256.Sum256([]byte(password))}
-	u.users[strings.ToLower(login)] = p
+	return &u, nil
 }
 
-func (u *Users) UserExists(login string) (exists bool) {
-	u.RLock()
-	defer u.RUnlock()
-
-	_, exists = u.users[strings.ToLower(login)]
-	return exists
+func UserExists(db *sql.DB, login string) (bool, error) {
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM Users WHERE login = ?", strings.ToLower(login)).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("failed to get row: %s", err.Error())
+	}
+	return count > 0, nil
 }
 
-func (u *Users) CheckPass(login, password string) (correct bool) {
-	u.RLock()
-	defer u.RUnlock()
-
-	return reflect.DeepEqual(sha256.Sum256([]byte(password)), u.users[strings.ToLower(login)].passHash)
+func CheckPass(db *sql.DB, login, password string) (bool, error) {
+	user, err := GetUser(db, login)
+	if err != nil {
+		return false, err
+	}
+	return reflect.DeepEqual(sha256.Sum256([]byte(password)), user.passhash), nil
 }
 
 // MARK: JWT
@@ -110,55 +169,65 @@ func CreateToken(username string) (string, error) {
 }
 
 // MARK: Expressions
-type Expression struct {
-	rootNode *processing.Node
-	done     bool
+var E Expressions = Expressions{make(map[uint]*Expression), sync.RWMutex{}}
+
+func LoadExpression(e *Expressions, id, uid uint, str string, result float64, done bool) error {
+	if sep, err := processing.Separate([]rune(str)); err != nil {
+		return err
+	} else if tokens, err := processing.Tokenize(sep); err != nil {
+		return err
+	} else if eval, err := processing.Eval(tokens, processing.NodeGen); err != nil {
+		return err
+	} else {
+		e.Lock()
+		defer e.Unlock()
+		expr := &Expression{id, uid, str, result, done, eval, make([]float64, 0)}
+		e.E[id] = expr
+	}
+	return nil
 }
 
-type Expressions struct {
-	exprs map[string]*Expression
-}
-
-var E Expressions
-
-func (e *Expressions) AddExpression(rootNode *processing.Node) (id string) {
-	id = uuid.NewString()
-	e.exprs[id] = &Expression{rootNode, false}
-	return id
-}
-
-// MARK: Tasks
-type Task struct {
-	pNode *processing.Node
-	left  float64
-	right float64
-	op    rune
-
-	value *float64
-	done  bool
-}
-
-type Tasks struct {
-	tasks []*Task
-}
-
-var T Tasks
-
-func (e *Tasks) AddTask(node *processing.Node, left float64, right float64) {
-	t := Task{
-		node, left, right, *node.Op, nil, false,
+func AddExpression(e *Expressions, db *sql.DB, uid uint, str string) error {
+	if _, err := db.Exec("INSERT INTO Expressions (uid, expr) VALUES (?, ?)", uid, str); err != nil {
+		return err
 	}
 
-	e.tasks = append(e.tasks, &t)
+	r := db.QueryRow("SELECT (id) FROM Expressions order by rowid desc LIMIT 1", uid, str)
+
+	var id uint
+	r.Scan(&id)
+	if err := LoadExpression(e, id, uid, str, 0, false); err != nil {
+		return err
+	}
+
+	return r.Err()
 }
 
-func Init() {
-	U = Users{}
-	U.users = make(map[string]*User)
+// Load expressions from db - generating node trees may take some time
+func LoadExpressions(db *sql.DB, e *Expressions) error {
+	rows, err := db.Query("SELECT * FROM Expressions")
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var expr Expression
+		if err := rows.Scan(&expr.ID, &expr.UID, &expr.Expr, &expr.Result, &expr.Finished); err != nil {
+			return err
+		}
+		if err := LoadExpression(e, expr.ID, expr.UID, expr.Expr, expr.Result, expr.Finished); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
-	E = Expressions{}
-	E.exprs = make(map[string]*Expression)
-
-	T = Tasks{}
-	T.tasks = make([]*Task, 0)
+func GetExpressionResult(e *Expressions, id uint) *float64 {
+	e.RLock()
+	defer e.RUnlock()
+	expr := e.E[id]
+	var result float64
+	if expr.Finished {
+		result = expr.Result
+	}
+	return &result
 }

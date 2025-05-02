@@ -15,11 +15,6 @@ type AuthRequest struct {
 }
 
 func Register(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	var data AuthRequest
 	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
@@ -37,22 +32,20 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if storage.U.UserExists(data.Login) {
+	if n, err := storage.UserExists(storage.D, data.Login); err != nil {
+		logging.Error("Failed getting user exists: %s", err.Error())
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	} else if n {
 		http.Error(w, "User exists", http.StatusBadRequest)
 		return
 	}
 
 	logging.Log("User created: %s\n", data.Login)
-	storage.U.AddUser(data.Login, data.Password)
+	storage.AddUser(storage.D, data.Login, data.Password)
 	w.WriteHeader(200)
 }
 
 func Login(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	var data AuthRequest
 	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
@@ -60,13 +53,19 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !storage.U.UserExists(data.Login) {
+	if n, err := storage.UserExists(storage.D, data.Login); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logging.Error("Failed login: %s", err.Error())
+	} else if !n {
 		http.Error(w, "User does not exist", http.StatusBadRequest)
 		return
 	}
 
-	if !storage.U.CheckPass(data.Login, data.Password) {
-		http.Error(w, "Wrong passowrd", http.StatusUnauthorized)
+	if n, err := storage.CheckPass(storage.D, data.Login, data.Password); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logging.Error("Failed login: %s", err.Error())
+	} else if !n {
+		http.Error(w, "Wrong password", http.StatusUnauthorized)
 		return
 	}
 
@@ -77,4 +76,8 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write([]byte(jwt))
+}
+
+func Calculate(w http.ResponseWriter, r *http.Request) {
+
 }

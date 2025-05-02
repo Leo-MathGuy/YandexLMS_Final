@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-var Logger *log.Logger
+var Logger *log.Logger = log.Default()
 
 func CreateLogger() (logger *log.Logger, err error) {
 	f, err := os.OpenFile("logs/appLog.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)

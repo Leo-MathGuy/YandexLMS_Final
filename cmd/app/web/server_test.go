@@ -5,15 +5,16 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/logging"
+	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/storage"
+	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/util"
 )
 
 func TestIndex(t *testing.T) {
-	os.Chdir(os.Getenv("WORKSPACE_DIR"))
+	util.Leave()
 
 	oldLogger := logging.Logger
 	defer func() { logging.Logger = oldLogger }()
@@ -45,12 +46,17 @@ func TestIndex(t *testing.T) {
 	}
 }
 
-func TestAuth(t *testing.T) {
-	os.Chdir(os.Getenv("WORKSPACE_DIR"))
+func TestServer(t *testing.T) {
+	util.Leave()
+	storage.ConnectDB()
+	storage.DropTables(storage.D)
+
+	if err := storage.CreateTables(storage.D); err != nil {
+		t.Fatalf("Creating tables failed with %s", err.Error())
+	}
 
 	oldLogger := logging.Logger
 	defer func() { logging.Logger = oldLogger }()
-
 	logging.Logger = log.Default()
 
 	mux := createServer()
