@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -48,8 +49,8 @@ func TestIndex(t *testing.T) {
 
 func TestServer(t *testing.T) {
 	util.Leave()
+	os.Remove("sqlite3.db")
 	storage.ConnectDB()
-	storage.DropTables(storage.D)
 
 	if err := storage.CreateTables(storage.D); err != nil {
 		t.Fatalf("Creating tables failed with %s", err.Error())

@@ -81,15 +81,6 @@ func CreateTables(db *sql.DB) error {
 	return err
 }
 
-func DropTables(db *sql.DB) {
-	if _, err := db.Exec(`
-	DROP TABLE Users;
-	DROP TABLE Expressions
-	`); err != nil {
-		logging.Panic(err.Error())
-	}
-}
-
 // MARK: USERS
 func AddUser(db *sql.DB, login, password string) error {
 	passhash := sha256.Sum256([]byte(password))
