@@ -49,10 +49,8 @@ var defaultDb string = "sqlite3.db"
 func ConnectDB() chan struct{} {
 	var database *sql.DB
 	if s := os.Getenv("APPDB"); s != "" {
-		logging.Log("1")
 		database, _ = sql.Open("sqlite3", s)
 	} else {
-		logging.Log("2")
 		database, _ = sql.Open("sqlite3", defaultDb)
 	}
 

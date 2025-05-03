@@ -62,6 +62,30 @@ func TestStorage(t *testing.T) {
 			t.Error("alice was found")
 		}
 
+		if res, err := CheckPass(db, "bob", "123"); err != nil {
+			t.Errorf("Error checking password: %s", err.Error())
+		} else if !res {
+			t.Error("Password returned false")
+		}
+
+		if res, err := CheckPass(db, "bob", "1234"); err != nil {
+			t.Errorf("Error checking password: %s", err.Error())
+		} else if res {
+			t.Error("Password returned true")
+		}
+
+		if res, err := CheckPass(db, "bob", ""); err != nil {
+			t.Errorf("Error checking password: %s", err.Error())
+		} else if res {
+			t.Error("Empty pawssword returned true")
+		}
+
+		if res, err := CheckPass(db, "aaa", ""); err == nil {
+			t.Error("No error checking nonexistent password")
+		} else if res {
+			t.Error("Empty pawssword returned true")
+		}
+
 		AddUser(db, "eVe", "456")
 		users, err := GetUsers(db)
 		if err != nil {
