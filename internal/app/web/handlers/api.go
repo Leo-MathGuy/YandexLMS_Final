@@ -84,7 +84,7 @@ func LoginAPI(w http.ResponseWriter, r *http.Request) {
 		Value:    jwt,
 		Path:     "/",
 		MaxAge:   1800,
-		HttpOnly: true,
+		HttpOnly: false,
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	})
@@ -135,4 +135,8 @@ func Calculate(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.Write(response)
 	}
+}
+
+func Favicon(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "./web/static/favicon.ico")
 }

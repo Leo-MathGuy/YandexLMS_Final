@@ -16,6 +16,8 @@ function handleSubmit(event) {
                 if (url.split("/")[5] === "register") {
                     window.location.href = "/login";
                 } else {
+                    document.cookie =
+                        "token=" + xhr.responseText + "; maxAge=1800";
                     window.location.href = "/calc";
                 }
             } else {

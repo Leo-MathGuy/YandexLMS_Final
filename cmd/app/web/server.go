@@ -8,10 +8,12 @@ import (
 
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/logging"
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/storage"
+	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/util"
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/web/handlers"
 )
 
 func createServer() *mux.Router {
+	util.Leave()
 	logging.Log(strings.Repeat("-", 80) + "\n")
 	logging.Log("Creating server\n")
 
@@ -24,6 +26,7 @@ func createServer() *mux.Router {
 
 	mux.HandleFunc("/api/v1/calculate", handlers.Calculate).Methods("POST")
 
+	mux.HandleFunc("/favicon.ico", handlers.Favicon)
 	mux.HandleFunc("/calc", handlers.Calc).Methods("GET")
 	mux.HandleFunc("/login", handlers.Login).Methods("GET")
 	mux.HandleFunc("/register", handlers.Register).Methods("GET")
@@ -34,6 +37,7 @@ func createServer() *mux.Router {
 func initServer() {
 	storage.ConnectDB()
 	storage.CreateTables(storage.D)
+	handlers.CheckTemplates()
 }
 
 func RunServer() {

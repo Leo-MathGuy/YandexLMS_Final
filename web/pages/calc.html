@@ -1,18 +1,16 @@
-<!DOCTYPE html>
-<html lang="en">
+{{template "base" .}}
+{{define "title"}}Calculator actual!{{end}}
 
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="/static/styles.css" />
-    <title>Calculator!!</title>
-</head>
+{{define "content"}}
+<header>
+    <h1>{{template "title" .}}</h1>
+</header>
 
-<body>
-    {{template "navbar"}}
-    <main>
-        <form action=""></form>
-    </main>
-</body>
+<main>
+    <form action="/api/v1/calculate" method="post" id="form">
+    </form>
+</main>
+{{end}}
 
-</html>
+{{define "scripts"}}
+{{end}}
