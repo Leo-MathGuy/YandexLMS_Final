@@ -22,13 +22,18 @@ func apiTester(
 	url string,
 	f func(http.ResponseWriter, *http.Request),
 	expect bool,
+	bodyRaw bool,
 ) {
 	var b []byte
 	if method == http.MethodPost {
-		var err error
-		b, err = json.Marshal(body)
-		if err != nil {
-			t.Fatalf("Error marshaling request: %s", err)
+		if bodyRaw {
+			b = body.([]byte)
+		} else {
+			var err error
+			b, err = json.Marshal(body)
+			if err != nil {
+				t.Fatalf("Error marshaling request: %s", err)
+			}
 		}
 	}
 
@@ -55,6 +60,7 @@ func apiTester(
 }
 
 func TestAPI(t *testing.T) {
+	// May god forgive me for this abomination
 	util.Leave()
 	os.Remove("testapi.db")
 	defer os.Remove("testapi.db")
@@ -64,6 +70,10 @@ func TestAPI(t *testing.T) {
 	stop := storage.ConnectDB()
 	storage.CreateTables(storage.D)
 	defer close(stop)
+
+	t.Run("favicon", func(t *testing.T) {
+		apiTester(t, http.MethodGet, nil, "/favicon.ico", Favicon, true, false)
+	})
 
 	type AuthTest struct {
 		pass bool
@@ -86,15 +96,15 @@ func TestAPI(t *testing.T) {
 		{false, AuthRequest{"eve", "password"}},
 	}
 
-	t.Run("Register", func(t *testing.T) {
+	if !t.Run("Register", func(t *testing.T) {
 		wg := sync.WaitGroup{}
 
 		if !t.Run("Phase 1", func(t *testing.T) {
-			for _, passingTest := range registerTest {
+			for _, test := range registerTest {
 				wg.Add(1)
 				go func() {
 					defer wg.Done()
-					apiTester(t, http.MethodPost, passingTest.AuthRequest, "/api/v1/register", RegisterAPI, passingTest.pass)
+					apiTester(t, http.MethodPost, test.AuthRequest, "/api/v1/register", RegisterAPI, test.pass, false)
 				}()
 			}
 			wg.Wait()
@@ -103,15 +113,19 @@ func TestAPI(t *testing.T) {
 			return
 		}
 
-		for _, passingTest := range registerTest2 {
+		for _, test := range registerTest2 {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				apiTester(t, http.MethodPost, passingTest.AuthRequest, "/api/v1/register", RegisterAPI, passingTest.pass)
+				apiTester(t, http.MethodPost, test.AuthRequest, "/api/v1/register", RegisterAPI, test.pass, false)
 			}()
 		}
 		wg.Wait()
-	})
+
+		apiTester(t, http.MethodPost, []byte("test"), "/api/v1/register", RegisterAPI, false, true)
+	}) {
+		return
+	}
 
 	loginTest := []AuthTest{
 		{true, AuthRequest{"bob", "123"}},
@@ -124,16 +138,54 @@ func TestAPI(t *testing.T) {
 		{false, AuthRequest{"eve", "password"}},
 	}
 
-	t.Run("Login", func(t *testing.T) {
+	if !t.Run("Login", func(t *testing.T) {
 		wg := sync.WaitGroup{}
 
-		for _, passingTest := range loginTest {
+		for _, test := range loginTest {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				apiTester(t, http.MethodPost, passingTest.AuthRequest, "/api/v1/login", LoginAPI, passingTest.pass)
+				apiTester(t, http.MethodPost, test.AuthRequest, "/api/v1/login", LoginAPI, test.pass, false)
 			}()
 		}
 		wg.Wait()
-	})
+
+		apiTester(t, http.MethodPost, []byte("test"), "/api/v1/login", LoginAPI, false, true)
+	}) {
+		return
+	}
+
+	type ExprTest struct {
+		pass bool
+		CalcRequest
+	}
+
+	token, err := storage.CreateToken("bob")
+	if err != nil {
+		t.Fatalf("Failed to create token: %s", err)
+	}
+
+	exprTests := []ExprTest{
+		{true, CalcRequest{"2+2", token}},
+		{true, CalcRequest{"2+2-(2*5-2)", token}},
+		{false, CalcRequest{"2+", token}},
+		{false, CalcRequest{"2+2", ""}},
+	}
+
+	if !t.Run("Expressions", func(t *testing.T) {
+		wg := sync.WaitGroup{}
+
+		for _, test := range exprTests {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				apiTester(t, http.MethodPost, test.CalcRequest, "/api/v1/calculate", Calculate, test.pass, false)
+			}()
+		}
+		wg.Wait()
+
+		apiTester(t, http.MethodPost, []byte("test"), "/api/v1/Cclculate", Calculate, false, true)
+	}) {
+		return
+	}
 }

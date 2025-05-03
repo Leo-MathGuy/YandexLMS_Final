@@ -1,5 +1,6 @@
 {
     "go.testEnvVars": {
         "WORKSPACE_DIR": "${workspaceFolder}"
-    }
+    },
+    "go.testFlags": ["-race"]
 }

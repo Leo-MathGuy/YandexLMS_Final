@@ -51,7 +51,8 @@ func TestServer(t *testing.T) {
 	util.Leave()
 	os.Remove("sqlite3.db")
 	defer os.Remove("sqlite3.db")
-	storage.ConnectDB()
+	stop := storage.ConnectDB()
+	defer close(stop)
 
 	if err := storage.CreateTables(storage.D); err != nil {
 		t.Fatalf("Creating tables failed with %s", err.Error())
