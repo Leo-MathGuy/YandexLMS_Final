@@ -25,15 +25,6 @@ func (n *Node) toString() string {
 	}
 }
 
-// For testing purposes
-func (n *Node) toStringShort() string {
-	if n.IsValue {
-		return strconv.FormatFloat(*n.Value, 'f', -1, 64)
-	} else {
-		return fmt.Sprintf("%s%s%s", n.Left.toStringShort(), string(*n.Op), n.Right.toStringShort())
-	}
-}
-
 // Levels of the Recursive Descent Parsing algorithm
 const (
 	expr = iota

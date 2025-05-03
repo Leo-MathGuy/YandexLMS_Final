@@ -35,9 +35,15 @@ func createServer() *mux.Router {
 }
 
 func initServer() {
+	logging.Log("Connecting database")
 	storage.ConnectDB()
 	storage.CreateTables(storage.D)
+
+	logging.Log("Checking templates")
 	handlers.CheckTemplates()
+
+	logging.Log("Loading expressions")
+	storage.LoadExpressions(storage.D, &storage.E)
 }
 
 func RunServer() {

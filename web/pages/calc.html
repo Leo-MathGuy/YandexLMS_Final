@@ -7,10 +7,17 @@
 </header>
 
 <main>
-    <form action="/api/v1/calculate" method="post" id="form">
+    <form id="form">
+        <label for="expression">Expression:
+            <input type="text" id="expression" name="expression" minlength="1" pattern="^[\(\)0-9*\/+\- ]+$" required>
+        </label>
+        <input id="submit" type="submit" value="Calculate!" disabled>
+        <p id="error"></p>
+        <p id="result"></p>
     </form>
 </main>
 {{end}}
 
 {{define "scripts"}}
+<script src="/static/calc.js"></script>
 {{end}}

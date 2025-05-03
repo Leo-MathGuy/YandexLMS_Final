@@ -246,7 +246,7 @@ func TestParse(t *testing.T) {
 
 			result := parse(types, expr2)
 
-			if result != test.expected {
+			if (result == nil) != test.expected {
 				t.Errorf("Test %s:\n - got  %t\n - want %t", test.expr, result, test.expected)
 			}
 		}()

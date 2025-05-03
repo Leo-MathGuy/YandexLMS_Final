@@ -102,11 +102,7 @@ func Validate(expression string) error {
 		}
 	}
 
-	if !parse(types, separated) {
-		return fmt.Errorf("parsing failure")
-	}
-
-	return nil
+	return parse(types, separated)
 }
 
 // Separate, not validate
@@ -149,7 +145,7 @@ func validateNumber(str string) bool {
 }
 
 // Simulate calculator tokenization with basic what-fails-after-what logic and parentheses checking
-func parse(types []int, separated [][]rune) bool {
+func parse(types []int, separated [][]rune) error {
 	var prev int = -1
 	op := false
 	unary := false
@@ -176,36 +172,36 @@ func parse(types []int, separated [][]rune) bool {
 		case number:
 			switch cur {
 			case number:
-				return false // Num after num
+				return fmt.Errorf("number after number")
 			case parentheses:
 				if separated[i-1-spaceOffset][0] == '(' {
-					return false // ( after num
+					return fmt.Errorf("opening parentheses after number")
 				}
 			}
 		case parentheses:
 			switch cur {
 			case number:
 				if separated[i-1-spaceOffset][0] == ')' {
-					return false // Num after )
+					return fmt.Errorf("number after closing parentheses")
 				}
 			case parentheses:
 				if separated[i-1-spaceOffset][0] != separated[i][0] {
-					return false // () or )(
+					return fmt.Errorf("invalid parentheses pair")
 				}
 			}
 		case operator:
 			switch cur {
 			case operator:
 				if separated[i][0] != '-' {
-					return false // Op after op
+					return fmt.Errorf("operator after operator")
 				} else if !unary {
 					unary = true
 				} else {
-					return false // Too many -
+					return fmt.Errorf("invalid unary negation")
 				}
 			case parentheses:
 				if separated[i][0] == ')' {
-					return false // ) after op
+					return fmt.Errorf("closing parentheses after operator")
 				}
 			}
 		}
@@ -226,7 +222,13 @@ func parse(types []int, separated [][]rune) bool {
 		}
 	}
 
-	return !op && parenStack == 0
+	if op {
+		return fmt.Errorf("ends on operator")
+	} else if parenStack != 0 {
+		return fmt.Errorf("unmatched parentheses")
+	} else {
+		return nil
+	}
 }
 
 // // Tokenization

@@ -24,14 +24,14 @@ nav {
 
 nav a {
     width: 15%;
-    padding: 25px 50px;
+    padding: 25px min(40px, 5vw);
     overflow-x: hidden;
 
     color: black;
 
     text-decoration: none;
     text-align: center;
-    font-size: 1.3em;
+    font-size: min(1.3em, 2.5vw);
 
     transition: transform 3s ease-in-out;
 }
@@ -106,4 +106,8 @@ input[type="submit"]:hover {
 
 p#error {
     color: red;
+}
+
+#expression {
+    width: min(70vw, 50em);
 }

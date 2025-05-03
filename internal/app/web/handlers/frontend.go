@@ -12,6 +12,7 @@ import (
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/util"
 )
 
+// Wizardry was involved
 func parseTemplate(page string) *template.Template {
 	util.Leave()
 

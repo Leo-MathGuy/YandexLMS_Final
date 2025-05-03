@@ -1,25 +1,27 @@
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(";").shift();
+}
+
 function handleSubmit(event) {
     event.preventDefault();
     document.getElementById("error").innerHTML = "";
+    document.getElementById("result").innerHTML = "";
 
     const form = new FormData(event.target);
     const data = Object.fromEntries(form.entries());
+    data["token"] = getCookie("token");
 
     var xhr = new XMLHttpRequest();
-    var url = event.target.action;
+    var url = "/api/v1/calculate";
     xhr.open("POST", url, true);
     xhr.setRequestHeader("Content-Type", "application/json");
-    xhr.withCredentials = true;
     xhr.onreadystatechange = function () {
         if (xhr.readyState === 4) {
             if (xhr.status === 200) {
-                if (url.split("/")[5] === "register") {
-                    window.location.href = "/login";
-                } else {
-                    document.cookie =
-                        "token=" + xhr.responseText + "; maxAge=1800";
-                    window.location.href = "/calc";
-                }
+                document.getElementById("result").innerHTML =
+                    "Recieved, ID: " + JSON.parse(xhr.responseText)["id"];
             } else {
                 document.getElementById("error").innerHTML = xhr.responseText;
                 console.log(xhr.status);
