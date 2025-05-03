@@ -30,7 +30,9 @@ go run cmd/agent/
 
 ### Tests
 
-Unit and integration tests can be run for the entire project by running
+Unit and integration tests can be run for the entire project by running.
+
+WARNING: Running tests will delete the database
 
 ```bash
 go test ./...

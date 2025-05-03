@@ -5,9 +5,9 @@ import "os"
 // Use in testing
 func Leave() {
 out:
-	for i := range 5 {
-		if i == 4 {
-			panic("i == 4")
+	for i := range 10 {
+		if i == 9 {
+			panic("i == 9")
 		}
 
 		e, _ := os.ReadDir("./")

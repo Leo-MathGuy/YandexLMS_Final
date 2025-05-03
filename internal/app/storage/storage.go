@@ -46,11 +46,13 @@ var D *sql.DB
 var defaultDb string = "sqlite3.db"
 
 // Connect DB to the public D variable
-func ConnectDB() {
+func ConnectDB() chan struct{} {
 	var database *sql.DB
 	if s := os.Getenv("APPDB"); s != "" {
-		database, _ = sql.Open("sqlite3", "./sqlite3.db")
+		logging.Log("1")
+		database, _ = sql.Open("sqlite3", s)
 	} else {
+		logging.Log("2")
 		database, _ = sql.Open("sqlite3", defaultDb)
 	}
 
@@ -61,15 +63,29 @@ func ConnectDB() {
 	}
 	D = database
 
+	stop := make(chan struct{})
 	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+
 		for {
-			time.Sleep(time.Second)
-			err := database.Ping()
-			if err != nil {
-				logging.Panic("DB Failed this gets 5 big booms, boom boom boom boom boom")
+			select {
+			case <-stop:
+				return
+			case <-ticker.C:
+				err := database.Ping()
+				if err != nil {
+					logging.Panic("DB Failed this gets 5 big booms, boom boom boom boom boom")
+				}
 			}
 		}
 	}()
+
+	return stop
+}
+
+func DisconnectDB() {
+	D.Close()
 }
 
 func CreateTables(db *sql.DB) error {

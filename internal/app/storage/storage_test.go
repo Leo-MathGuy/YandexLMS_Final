@@ -3,7 +3,6 @@ package storage
 import (
 	"crypto/sha256"
 	"database/sql"
-	"os"
 	"reflect"
 	"strings"
 	"sync"
@@ -16,10 +15,9 @@ import (
 
 func TestStorage(t *testing.T) {
 	util.Leave()
-	os.Remove("test.db")
-	defer os.Remove("test.db")
 
-	db, _ := sql.Open("sqlite3", "./test.db")
+	db, _ := sql.Open("sqlite3", ":memory:")
+	defer db.Close()
 	err := db.Ping()
 	if err != nil {
 		t.Fatalf("DB Failed womp womp")
@@ -209,12 +207,14 @@ func TestStorage(t *testing.T) {
 
 func TestDb(t *testing.T) {
 	util.Leave()
-	os.Setenv("APPDB", "test.db")
-	defer os.Remove("test.db")
+	t.Setenv("APPDB", ":memory:")
+	defer t.Setenv("APPDB", "")
 	defer func() {
 		if r := recover(); r != nil {
 			t.Errorf("Failed to connect to db: %s", r)
 		}
 	}()
-	ConnectDB()
+	defer DisconnectDB()
+	stop := ConnectDB()
+	defer close(stop)
 }

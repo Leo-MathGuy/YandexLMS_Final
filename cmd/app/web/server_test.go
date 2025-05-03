@@ -50,6 +50,7 @@ func TestIndex(t *testing.T) {
 func TestServer(t *testing.T) {
 	util.Leave()
 	os.Remove("sqlite3.db")
+	defer os.Remove("sqlite3.db")
 	storage.ConnectDB()
 
 	if err := storage.CreateTables(storage.D); err != nil {
