@@ -5,10 +5,13 @@ import (
 	"database/sql"
 	"os"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/util"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func TestStorage(t *testing.T) {
@@ -77,14 +80,65 @@ func TestStorage(t *testing.T) {
 			}
 		}
 
-		if token, err := CreateToken("bob"); err != nil {
-			t.Fatalf("Token creation failed: %s", err.Error())
-		} else if out, err := CheckToken(db, token); err != nil {
-			t.Errorf("Error checking token: %s", err.Error())
-		} else if out == nil {
-			t.Errorf("Token not validated")
-		}
+		t.Run("Token valid", func(t *testing.T) {
+			if token, err := CreateToken("bob"); err != nil {
+				t.Fatalf("Token creation failed: %s", err.Error())
+			} else if out, err := CheckToken(db, token); err != nil {
+				t.Errorf("Error checking token: %s", err.Error())
+			} else if out == nil {
+				t.Errorf("Token not validated")
+			}
+		})
 
+		t.Run("Token expired", func(t *testing.T) {
+			now := time.Now().UTC()
+			expiredToken := jwt.NewWithClaims(jwt.SigningMethodHS256,
+				jwt.MapClaims{
+					"user": strings.ToLower("bob"),
+					"exp":  now.Add(-30 * time.Minute).UnixMilli(),
+					"iat":  now.UnixMilli(),
+				})
+
+			expired, err := expiredToken.SignedString(secretKey)
+			if err != nil {
+				t.Fatalf("Creation of expired token failed: %s", err.Error())
+			}
+
+			u, err := CheckToken(db, expired)
+
+			if !(u == nil && err == nil) {
+				t.Errorf("Expired check failed")
+			}
+		})
+
+		t.Run("Token invalid", func(t *testing.T) {
+			now := time.Now().UTC()
+			expiredToken := jwt.NewWithClaims(jwt.SigningMethodHS256,
+				jwt.MapClaims{
+					"user": strings.ToLower("meow"),
+					"exp":  now.Add(30 * time.Minute).UnixMilli(),
+					"iat":  now.UnixMilli(),
+				})
+
+			expired, err := expiredToken.SignedString(secretKey)
+			if err != nil {
+				t.Fatalf("Creation of expired token failed: %s", err.Error())
+			}
+
+			u, err := CheckToken(db, expired)
+
+			if !(u == nil && err != nil) {
+				t.Errorf("Invalid check failed")
+			}
+		})
+
+		t.Run("Token wrong", func(t *testing.T) {
+			u, err := CheckToken(db, "test")
+
+			if !(u == nil && err != nil) {
+				t.Errorf("Wrong token check failed")
+			}
+		})
 	})
 
 	if !proceed {
@@ -140,5 +194,27 @@ func TestStorage(t *testing.T) {
 		if !reflect.DeepEqual(*ex, *ex2) {
 			t.Errorf("Not loaded correctly")
 		}
+
+		if _, err := AddExpression(&e, db, bob.ID, "2+%"); err == nil {
+			t.Fatalf("No error loading invalid expression")
+		}
+
+		e.E[1].Result = 2.0
+		e.E[1].Finished = true
+		if *GetExpressionResult(&e, 1) != 2.0 {
+			t.Errorf("Result not given")
+		}
 	})
+}
+
+func TestDb(t *testing.T) {
+	util.Leave()
+	os.Setenv("APPDB", "test.db")
+	defer os.Remove("test.db")
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("Failed to connect to db: %s", r)
+		}
+	}()
+	ConnectDB()
 }

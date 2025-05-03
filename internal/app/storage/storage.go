@@ -189,7 +189,7 @@ func CheckToken(db *sql.DB, token string) (*User, error) {
 			return user, nil
 		}
 	} else {
-		return nil, fmt.Errorf("token expired")
+		return nil, fmt.Errorf("token invalid")
 	}
 }
 

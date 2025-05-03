@@ -278,6 +278,8 @@ var validationTests []ExprTest = []ExprTest{
 	{"()", false},
 	{"", false},
 	{"5158🗿8112-125", false},
+	{"5", true},
+	{"(5)", true},
 }
 
 func TestValidate(t *testing.T) {
@@ -366,6 +368,11 @@ var tokenizeTests []TokenizeTest = []TokenizeTest{
 	}},
 }
 
+var tokenizeFail []string = []string{
+	"-1+5%-2",
+	"-1+5-2.4.2",
+}
+
 func TestTokenize(t *testing.T) {
 	t.Parallel()
 
@@ -414,6 +421,20 @@ func TestTokenize(t *testing.T) {
 					return
 				}
 
+			}
+		}()
+	}
+
+	for _, failing := range tokenizeFail {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			sep, err := Separate([]rune(failing))
+			if err != nil {
+				return
+			}
+			if _, err := Tokenize(sep); err == nil {
+				t.Errorf("Not errored: %s", failing)
 			}
 		}()
 	}
