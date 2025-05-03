@@ -24,6 +24,9 @@ func Log(s string, f ...any) {
 	Logger.Printf(s, f...)
 }
 
+func Warning(s string, f ...any) {
+	Logger.Printf("WARNING: "+s, f...)
+}
 func Error(s string, f ...any) {
 	Logger.Printf("ERROR: "+s, f...)
 }

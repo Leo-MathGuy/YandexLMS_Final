@@ -1,7 +1,10 @@
 package web
 
 import (
+	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/gorilla/mux"
@@ -46,10 +49,23 @@ func initServer() {
 	storage.LoadExpressions(storage.D, &storage.E)
 }
 
-func RunServer() {
+func RunServer() error {
+	connected := true
+	if logging.Logger == log.Default() {
+		connected = false
+		logging.CreateLogger()
+		logging.Warning("App launched without agent")
+	}
+
 	mux := createServer()
 	initServer()
 
 	logging.Log("Server starting, press enter to stop\n")
-	logging.Panic("Server failed with error: %s\n", http.ListenAndServe(":8080", mux).Error())
+	err := http.ListenAndServe(":8080", mux)
+	logging.Panic("Server failed with error: %s\n", err.Error())
+
+	if connected {
+		fmt.Fprintln(os.Stdin)
+	}
+	return err
 }

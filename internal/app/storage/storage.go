@@ -60,6 +60,16 @@ func ConnectDB() {
 		logging.Panic("DB Failed womp womp")
 	}
 	D = database
+
+	go func() {
+		for {
+			time.Sleep(time.Second)
+			err := database.Ping()
+			if err != nil {
+				logging.Panic("DB Failed this gets 5 big booms, boom boom boom boom boom")
+			}
+		}
+	}()
 }
 
 func CreateTables(db *sql.DB) error {
