@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -55,7 +56,9 @@ func apiTester(
 
 func TestAPI(t *testing.T) {
 	util.Leave()
-	t.Setenv("APPDB", ":memory:")
+	os.Remove("testapi.db")
+	defer os.Remove("testapi.db")
+	t.Setenv("APPDB", "./testapi.db")
 	defer t.Setenv("APPDB", "")
 	defer storage.DisconnectDB()
 	stop := storage.ConnectDB()
@@ -87,7 +90,6 @@ func TestAPI(t *testing.T) {
 		wg := sync.WaitGroup{}
 
 		if !t.Run("Phase 1", func(t *testing.T) {
-
 			for _, passingTest := range registerTest {
 				wg.Add(1)
 				go func() {
@@ -106,6 +108,30 @@ func TestAPI(t *testing.T) {
 			go func() {
 				defer wg.Done()
 				apiTester(t, http.MethodPost, passingTest.AuthRequest, "/api/v1/register", RegisterAPI, passingTest.pass)
+			}()
+		}
+		wg.Wait()
+	})
+
+	loginTest := []AuthTest{
+		{true, AuthRequest{"bob", "123"}},
+		{true, AuthRequest{"Bob", "123"}},
+		{true, AuthRequest{"boB", "123"}},
+		{true, AuthRequest{"alIC3", "121xd24@DR@$"}},
+		{false, AuthRequest{"bob", ""}},
+		{false, AuthRequest{"bob", strings.Repeat("-", 1000)}},
+		{false, AuthRequest{"bob", "12334"}},
+		{false, AuthRequest{"eve", "password"}},
+	}
+
+	t.Run("Login", func(t *testing.T) {
+		wg := sync.WaitGroup{}
+
+		for _, passingTest := range loginTest {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				apiTester(t, http.MethodPost, passingTest.AuthRequest, "/api/v1/login", LoginAPI, passingTest.pass)
 			}()
 		}
 		wg.Wait()

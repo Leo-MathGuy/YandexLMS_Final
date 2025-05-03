@@ -3,6 +3,7 @@ package storage
 import (
 	"crypto/sha256"
 	"database/sql"
+	"os"
 	"reflect"
 	"strings"
 	"sync"
@@ -207,7 +208,9 @@ func TestStorage(t *testing.T) {
 
 func TestDb(t *testing.T) {
 	util.Leave()
-	t.Setenv("APPDB", ":memory:")
+	os.Remove("testdb.db")
+	defer os.Remove("testdb.db")
+	t.Setenv("APPDB", "./testdb.db")
 	defer t.Setenv("APPDB", "")
 	defer func() {
 		if r := recover(); r != nil {
