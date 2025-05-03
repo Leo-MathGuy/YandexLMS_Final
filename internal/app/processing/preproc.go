@@ -174,7 +174,7 @@ func parse(types []int, separated [][]rune) error {
 			case number:
 				return fmt.Errorf("number after number")
 			case parentheses:
-				if separated[i-1-spaceOffset][0] == '(' {
+				if separated[i][0] == '(' {
 					return fmt.Errorf("opening parentheses after number")
 				}
 			}

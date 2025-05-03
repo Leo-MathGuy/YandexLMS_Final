@@ -114,7 +114,7 @@ func TestStorage(t *testing.T) {
 		if ex.Gen.Left == nil || ex.Gen.Right == nil || *ex.Gen.Left.Value != 2.0 || *ex.Gen.Right.Value != 2.0 {
 			t.Error("Wrong values")
 		}
-		if *ex.Gen.Op != rune('+') {
+		if ex.Gen.Op == nil || *ex.Gen.Op != rune('+') {
 			t.Error("Wrong op")
 		}
 

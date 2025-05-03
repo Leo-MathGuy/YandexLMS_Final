@@ -130,6 +130,7 @@ var sepPass []SepTest = []SepTest{
 	{"long", "5158812-125", "5158812,-,125"},
 	{"complex", "(-2*3 + (5 * (-4))*2) / -3", "(,-,2,*,3, ,+, ,(,5, ,*, ,(,-,4,),),*,2,), ,/, ,-,3"},
 	{"big", "-(42*52 * ((-533 * 155) + (-451*2531))) * 251", "-,(,42,*,52, ,*, ,(,(,-,533, ,*, ,155,), ,+, ,(,-,451,*,2531,),),), ,*, ,251"},
+	{"space sep", "2+2 2", "2,+,2, ,2"},
 }
 var sepFail []SepTest = []SepTest{
 	{"symbol", "2+&2", ""},
@@ -218,6 +219,11 @@ var parseTests []ExprTest = []ExprTest{
 	{"(, ,-, ,31.5, , ,*, , ,(, ,6.9, , ,*, , ,2, , ,) , ,) , ,/, , ,(, ,3.8, , ,+, , ,-, ,7.2, , ,)", true},
 	{"(, ,(, ,4.7, , ,+, , ,-, ,12.8, , ,) , ,*, , ,3, , ,) , ,-, ,-, ,(, ,25.6, , ,*, , ,2.3, , ,)", true},
 	{"-, ,(, ,(, ,17.4, , ,/, , ,-, ,5.5, , ,) , ,*, , ,2, , ,) , ,+, , ,(, ,7.1, , ,*, , ,1.7, , ,)", true},
+	{"1, ,2,+,2", false},
+	{"1,(,5,)", false},
+	{"(,5,),2", false},
+	{"5,-,-,-,5", false},
+	{"5,+,3,+", false},
 }
 
 func TestParse(t *testing.T) {
@@ -247,7 +253,7 @@ func TestParse(t *testing.T) {
 			result := parse(types, expr2)
 
 			if (result == nil) != test.expected {
-				t.Errorf("Test %s:\n - got  %t\n - want %t", test.expr, result, test.expected)
+				t.Errorf("Test %s:\n - got  %t\n - want %t", test.expr, result == nil, test.expected)
 			}
 		}()
 	}
@@ -270,6 +276,8 @@ var validationTests []ExprTest = []ExprTest{
 	{"- * 3 + 2", false},
 	{".5 + 2.", false},
 	{"()", false},
+	{"", false},
+	{"5158🗿8112-125", false},
 }
 
 func TestValidate(t *testing.T) {

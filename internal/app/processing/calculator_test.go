@@ -78,6 +78,14 @@ func TestEval(t *testing.T) {
 		}()
 	}
 
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if _, err := Eval(make([]ExprToken, 0), NodeGen); err == nil {
+			t.Errorf("Expected error on empty list")
+		}
+	}()
+
 	wg.Wait()
 }
 
