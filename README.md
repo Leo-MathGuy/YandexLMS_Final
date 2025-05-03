@@ -1,8 +1,7 @@
 # Yandex Go Course Final Project
 
 [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/Leo-MathGuy/YandexLMS_Final/go.yml?label=tests)](https://github.com/Leo-MathGuy/YandexLMS_Final/actions/workflows/go.yml)
-![Coveralls](https://img.shields.io/coverallsCoverage/github/Leo-MathGuy/YandexLMS_Final)
-
+[![Coverage Status](https://coveralls.io/repos/github/Leo-MathGuy/YandexLMS_Final/badge.svg?branch=main)](https://coveralls.io/github/Leo-MathGuy/YandexLMS_Final?branch=main)
 
 This is the final project that took two weeks of great effort to complete.
 This is a demonstration of web development, REST API, JWT authentication, SQL database usage, and GRPC communication in Go,
