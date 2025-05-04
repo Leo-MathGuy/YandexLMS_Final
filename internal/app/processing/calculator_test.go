@@ -125,9 +125,9 @@ var nodeGenTests []NodeGenTest = []NodeGenTest{
 		expr,
 	},
 	{
-		"2.5 * 3 / (4 - 1)",
+		"2.5 * (3) / (4 - 1)",
 		[]string{
-			"2.5", "3", "(4-1)",
+			"2.5", "(3)", "(4-1)",
 		},
 		term,
 	},

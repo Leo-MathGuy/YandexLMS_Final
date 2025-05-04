@@ -15,8 +15,6 @@ import (
 )
 
 func TestStorage(t *testing.T) {
-	util.Leave()
-
 	db, _ := sql.Open("sqlite3", ":memory:")
 	defer db.Close()
 	err := db.Ping()
@@ -244,4 +242,74 @@ func TestDb(t *testing.T) {
 	defer DisconnectDB()
 	stop := ConnectDB()
 	defer close(stop)
+}
+
+func TestTasks(t *testing.T) {
+	e := Expressions{make(map[uint]*Expression), sync.RWMutex{}}
+
+	db, _ := sql.Open("sqlite3", ":memory:")
+	defer db.Close()
+	err := db.Ping()
+	if err != nil {
+		t.Fatalf("DB Failed womp womp")
+	}
+	CreateTables(db)
+
+	tasks := Tasks{make(map[uint]*Task), 0, sync.RWMutex{}}
+
+	if AddUser(db, "bob", "123") != nil {
+		t.Fatal("Error adding user")
+	}
+
+	bob, err := GetUser(db, "bob")
+	if err != nil {
+		t.Fatalf("Error getting bob")
+	}
+
+	var expr *Expression
+	if i, err := AddExpression(&e, db, bob.ID, "2+2"); err != nil {
+		t.Fatalf("Error adding task: %s", err.Error())
+	} else {
+		expr = e.E[i]
+	}
+
+	if err := GenTasks(&tasks, expr); err != nil {
+		t.Fatalf("Error making tasks: %s", err.Error())
+	}
+
+	if len(tasks.T) != 3 {
+		t.Fatalf("Len tasks not 3")
+	}
+
+	if expr.TaskID == 0 {
+		t.Fatalf("Task ID not added")
+	}
+	rootTask := tasks.T[expr.TaskID]
+
+	if rootTask.LeftT == nil || rootTask.RightT == nil {
+		t.Fatalf("Root task not linked")
+	}
+
+	if rootTask.Op == nil {
+		t.Fatalf("No operator")
+	}
+
+	if !rootTask.LeftT.Value || !rootTask.RightT.Value {
+		t.Fatalf("Child tasks not values")
+	}
+
+	if *rootTask.LeftT.Left != 2 || *rootTask.RightT.Left != 2 {
+		t.Fatalf("Child tasks not 2")
+	}
+
+	complex := "((3.14 * (-5.2 + 7.8)) / (2.5 - (4.1 * (9.3 / -2.7)))) + (6.9 * ((1.2 - 3.4) / (8.5 + (-4.6 * 2.3)))) - ((-7.1 + 5.9) * (3.3 / (1.5 - 9.7)))"
+	i, err := AddExpression(&e, db, bob.ID, complex)
+
+	if err != nil {
+		t.Fatalf("Error generating expression: %s", err.Error())
+	}
+
+	if err := GenTasks(&tasks, e.E[i]); err != nil {
+		t.Fatalf("Error generating task tree: %s", err.Error())
+	}
 }

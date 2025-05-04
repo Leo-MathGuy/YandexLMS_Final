@@ -280,6 +280,7 @@ var validationTests []ExprTest = []ExprTest{
 	{"5158🗿8112-125", false},
 	{"5", true},
 	{"(5)", true},
+	{"((5))", true},
 }
 
 func TestValidate(t *testing.T) {

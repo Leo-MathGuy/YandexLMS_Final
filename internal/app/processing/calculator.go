@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/logging"
 )
 
 // The node of the AST
@@ -94,6 +96,11 @@ func NodeGen(tokens []ExprToken, mode uint, f nodeproc, level int) *Node {
 
 	case factor:
 		// Parentheses expr
+		defer func() {
+			if recover() != nil {
+				logging.Panic("Unary passed into NodeGen")
+			}
+		}()
 		return f(tokens[1:len(tokens)-1], expr, f, level+1)
 	}
 
@@ -110,7 +117,7 @@ func Eval(tokens []ExprToken, f nodeproc) (*Node, error) {
 	processed := make([]ExprToken, 0)
 
 	for i, v := range tokens {
-		if v.tokenType == operator && *v.valueI == int('-') && (i == 0 || tokens[i-1].tokenType == operator) {
+		if v.tokenType == operator && *v.valueI == int('-') && (i == 0 || tokens[i-1].tokenType == operator || (tokens[i-1].tokenType == parentheses && *tokens[i-1].valueI == int('('))) {
 			if tokens[i+1].tokenType == number {
 				*tokens[i+1].valueF *= -1
 			} else {

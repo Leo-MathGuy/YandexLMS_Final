@@ -30,6 +30,7 @@ type Expression struct {
 	UID      uint
 	Expr     string
 	Result   float64
+	TaskID   uint
 	Finished bool
 
 	Gen  *processing.Node
@@ -225,7 +226,7 @@ func LoadExpression(e *Expressions, id, uid uint, str string, result float64, do
 
 	e.Lock()
 	defer e.Unlock()
-	expr := &Expression{id, uid, str, result, done, eval, make([]float64, 0)}
+	expr := &Expression{id, uid, str, result, 0, done, eval, make([]float64, 0)}
 	e.E[id] = expr
 
 	return nil
@@ -281,4 +282,136 @@ func GetExpressionResult(e *Expressions, id uint) *float64 {
 		result = expr.Result
 	}
 	return &result
+}
+
+// MARK: Tasks
+type Tasks struct {
+	T  map[uint]*Task
+	Id uint
+	sync.RWMutex
+}
+
+type Task struct {
+	ID    uint
+	Left  *float64
+	Right *float64
+	Op    *rune
+	Value bool
+
+	LeftT  *Task
+	RightT *Task
+
+	Node *processing.Node
+	Sent bool
+}
+
+/*
+package orchestrator
+
+import "fmt"
+
+func GenerateTasksFromAST(node *ASTNode, parent bool) (int, error) {
+	if node == nil {
+		return 0, fmt.Errorf("empty node")
+	}
+
+	if node.Value != nil {
+		taskID := taskState.tasknum
+		taskState.tasknum++
+
+		taskState.tasks[taskID] = &Task{
+			ID:      taskID,
+			LeftVal: node.Value,
+			parent:  parent,
+			Done:    true,
+			Result:  node.Value,
+			Sent:    false,
+		}
+		return taskID, nil
+	}
+
+	leftID, err := GenerateTasksFromAST(node.Left, false)
+	if err != nil {
+		return 0, err
+	}
+	rightID, err := GenerateTasksFromAST(node.Right, false)
+	if err != nil {
+		return 0, err
+	}
+
+	taskID := taskState.tasknum
+	taskState.tasknum++
+
+	taskState.tasks[taskID] = &Task{
+		ID:       taskID,
+		Operator: node.Operator,
+		LeftID:   &leftID,
+		RightID:  &rightID,
+		parent:   parent,
+		Done:     false,
+		Sent:     false,
+	}
+
+	return taskID, nil
+}
+*/
+
+func GetTasks(tasks *Tasks, n *processing.Node) (*Task, error) {
+	var t Task
+
+	tasks.Id++
+	if n.IsValue {
+		t = Task{tasks.Id, n.Value, nil, nil, true, nil, nil, n, false}
+		tasks.Lock()
+		defer tasks.Unlock()
+		tasks.T[tasks.Id] = &t
+		return &t, nil
+	}
+
+	t = Task{tasks.Id, nil, nil, n.Op, false, nil, nil, n, false}
+
+	func() {
+		tasks.Lock()
+		defer tasks.Unlock()
+		tasks.T[tasks.Id] = &t
+	}()
+
+	if l, err := GetTasks(tasks, n.Left); err != nil {
+		return nil, err
+	} else {
+		t.LeftT = l
+	}
+
+	if r, err := GetTasks(tasks, n.Right); err != nil {
+		return nil, err
+	} else {
+		t.RightT = r
+	}
+
+	return &t, nil
+}
+
+// Generates bottom level tasks for an expression
+func GenTasks(tasks *Tasks, expr *Expression) error {
+	if t, err := GetTasks(tasks, expr.Gen); err != nil {
+		DeleteTaskRec(tasks, t)
+		return err
+	} else {
+		expr.TaskID = t.ID
+	}
+
+	return nil
+}
+
+func DeleteTaskRec(tasks *Tasks, task *Task) {
+	if task.LeftT != nil {
+		DeleteTaskRec(tasks, task.LeftT)
+	}
+	if task.RightT != nil {
+		DeleteTaskRec(tasks, task.RightT)
+	}
+
+	tasks.Lock()
+	defer tasks.Unlock()
+	delete(tasks.T, task.ID)
 }
