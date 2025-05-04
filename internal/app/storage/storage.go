@@ -33,8 +33,7 @@ type Expression struct {
 	TaskID   uint
 	Finished bool
 
-	Gen  *processing.Node
-	Done []float64
+	Gen *processing.Node
 }
 
 type Expressions struct {
@@ -226,7 +225,7 @@ func LoadExpression(e *Expressions, id, uid uint, str string, result float64, do
 
 	e.Lock()
 	defer e.Unlock()
-	expr := &Expression{id, uid, str, result, 0, done, eval, make([]float64, 0)}
+	expr := &Expression{id, uid, str, result, 0, done, eval}
 	e.E[id] = expr
 
 	return nil
@@ -284,6 +283,21 @@ func GetExpressionResult(e *Expressions, id uint) *float64 {
 	return &result
 }
 
+func CheckExpressions(db *sql.DB, e *Expressions, t *Tasks) {
+	t.Lock()
+	defer t.Unlock()
+
+	e.Lock()
+	defer e.Unlock()
+
+	for _, v := range e.E {
+		if v.TaskID != 0 && t.T[v.TaskID].Value {
+			v.Finished = true
+			v.Result = *t.T[v.TaskID].Left
+		}
+	}
+}
+
 // MARK: Tasks
 type Tasks struct {
 	T  map[uint]*Task
@@ -301,88 +315,40 @@ type Task struct {
 	LeftT  *Task
 	RightT *Task
 
-	Node *processing.Node
-	Sent bool
+	Parent *uint
+	Node   *processing.Node
+	Sent   bool
 }
 
-/*
-package orchestrator
-
-import "fmt"
-
-func GenerateTasksFromAST(node *ASTNode, parent bool) (int, error) {
-	if node == nil {
-		return 0, fmt.Errorf("empty node")
-	}
-
-	if node.Value != nil {
-		taskID := taskState.tasknum
-		taskState.tasknum++
-
-		taskState.tasks[taskID] = &Task{
-			ID:      taskID,
-			LeftVal: node.Value,
-			parent:  parent,
-			Done:    true,
-			Result:  node.Value,
-			Sent:    false,
-		}
-		return taskID, nil
-	}
-
-	leftID, err := GenerateTasksFromAST(node.Left, false)
-	if err != nil {
-		return 0, err
-	}
-	rightID, err := GenerateTasksFromAST(node.Right, false)
-	if err != nil {
-		return 0, err
-	}
-
-	taskID := taskState.tasknum
-	taskState.tasknum++
-
-	taskState.tasks[taskID] = &Task{
-		ID:       taskID,
-		Operator: node.Operator,
-		LeftID:   &leftID,
-		RightID:  &rightID,
-		parent:   parent,
-		Done:     false,
-		Sent:     false,
-	}
-
-	return taskID, nil
-}
-*/
-
-func GetTasks(tasks *Tasks, n *processing.Node) (*Task, error) {
+func GetTasks(tasks *Tasks, n *processing.Node, parent uint) (*Task, error) {
 	var t Task
 
 	tasks.Id++
+	myId := tasks.Id
+
 	if n.IsValue {
-		t = Task{tasks.Id, n.Value, nil, nil, true, nil, nil, n, false}
+		t = Task{tasks.Id, n.Value, nil, nil, true, nil, nil, &parent, n, false}
 		tasks.Lock()
 		defer tasks.Unlock()
 		tasks.T[tasks.Id] = &t
 		return &t, nil
 	}
 
-	t = Task{tasks.Id, nil, nil, n.Op, false, nil, nil, n, false}
+	t = Task{myId, nil, nil, n.Op, false, nil, nil, &parent, n, false}
 
 	func() {
 		tasks.Lock()
 		defer tasks.Unlock()
-		tasks.T[tasks.Id] = &t
+		tasks.T[myId] = &t
 	}()
 
-	if l, err := GetTasks(tasks, n.Left); err != nil {
+	if l, err := GetTasks(tasks, n.Left, myId); err != nil {
 		return nil, err
 	} else {
 		t.LeftT = l
 	}
 
-	if r, err := GetTasks(tasks, n.Right); err != nil {
+	if r, err := GetTasks(tasks, n.Right, myId); err != nil {
 		return nil, err
 	} else {
 		t.RightT = r
@@ -393,14 +359,14 @@ func GetTasks(tasks *Tasks, n *processing.Node) (*Task, error) {
 
 // Generates bottom level tasks for an expression
 func GenTasks(tasks *Tasks, expr *Expression) error {
-	if t, err := GetTasks(tasks, expr.Gen); err != nil {
+	if t, err := GetTasks(tasks, expr.Gen, 0); err != nil {
 		DeleteTaskRec(tasks, t)
 		return err
 	} else {
 		expr.TaskID = t.ID
+		FlattenTask(tasks, t)
+		return nil
 	}
-
-	return nil
 }
 
 func DeleteTaskRec(tasks *Tasks, task *Task) {
@@ -414,4 +380,94 @@ func DeleteTaskRec(tasks *Tasks, task *Task) {
 	tasks.Lock()
 	defer tasks.Unlock()
 	delete(tasks.T, task.ID)
+}
+
+func FlattenTask(tasks *Tasks, task *Task) {
+	if task.LeftT != nil && task.LeftT.Value {
+		func() {
+			tasks.Lock()
+			defer tasks.Unlock()
+
+			task.Left = task.LeftT.Left
+			delete(tasks.T, task.LeftT.ID)
+			task.LeftT = nil
+		}()
+
+	} else {
+		if task.LeftT != nil {
+			FlattenTask(tasks, task.LeftT)
+		}
+	}
+
+	if task.RightT != nil && task.RightT.Value {
+		func() {
+			tasks.Lock()
+			defer tasks.Unlock()
+
+			task.Right = task.RightT.Left
+			delete(tasks.T, task.RightT.ID)
+			task.RightT = nil
+		}()
+	} else {
+		if task.RightT != nil {
+			FlattenTask(tasks, task.RightT)
+		}
+	}
+}
+
+func FinishTask(tasks *Tasks, id uint, result float64) error {
+	tasks.Lock()
+	defer tasks.Unlock()
+
+	if task, ok := tasks.T[id]; !ok {
+		return fmt.Errorf("no such task")
+	} else if !task.Sent {
+		logging.Error("Not sent task recived: %d", task.ID)
+		return fmt.Errorf("task not sent")
+	} else if task.Value {
+		return fmt.Errorf("task is value/recived already")
+	} else if task.LeftT != nil || task.RightT != nil {
+		logging.Error("task recieved before expected: %d", task.ID)
+		return fmt.Errorf("there are still dependencies")
+	} else {
+		if *task.Parent != 0 {
+			parent := tasks.T[*task.Parent]
+			if parent.LeftT == task {
+				parent.Left = task.Left
+				parent.LeftT = nil
+			} else if parent.RightT == task {
+				parent.Right = task.Left
+				parent.RightT = nil
+			} else {
+				logging.Error("something wrong with parent: %d", task.ID)
+				return fmt.Errorf("something wrong with parent")
+			}
+		} else {
+			task.Left = processing.FloatPtr(result)
+			task.Right = nil
+			task.Value = true
+		}
+
+		return nil
+	}
+}
+
+// Gets a task for the agent. nil = no tasks. Sets task as sent
+func GetReadyTask(tasks *Tasks) *Task {
+	tasks.RLock()
+	defer tasks.RUnlock()
+
+	for _, task := range tasks.T {
+		if task.LeftT != nil || task.RightT != nil {
+			continue
+		}
+		if task.Sent {
+			continue
+		}
+
+		task.Sent = true
+		return task
+	}
+
+	return nil
 }

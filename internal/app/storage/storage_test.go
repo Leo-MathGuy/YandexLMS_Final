@@ -277,8 +277,8 @@ func TestTasks(t *testing.T) {
 		t.Fatalf("Error making tasks: %s", err.Error())
 	}
 
-	if len(tasks.T) != 3 {
-		t.Fatalf("Len tasks not 3")
+	if len(tasks.T) != 1 {
+		t.Fatalf("Len tasks not 1")
 	}
 
 	if expr.TaskID == 0 {
@@ -286,19 +286,23 @@ func TestTasks(t *testing.T) {
 	}
 	rootTask := tasks.T[expr.TaskID]
 
-	if rootTask.LeftT == nil || rootTask.RightT == nil {
-		t.Fatalf("Root task not linked")
+	if rootTask.LeftT != nil || rootTask.RightT != nil {
+		t.Fatalf("Root task not flattened")
 	}
 
 	if rootTask.Op == nil {
 		t.Fatalf("No operator")
 	}
 
-	if !rootTask.LeftT.Value || !rootTask.RightT.Value {
-		t.Fatalf("Child tasks not values")
+	if rootTask.Value {
+		t.Fatalf("Root task value")
 	}
 
-	if *rootTask.LeftT.Left != 2 || *rootTask.RightT.Left != 2 {
+	if rootTask.Left == nil || rootTask.Right == nil {
+		t.Fatalf("Root task not flattened 2")
+	}
+
+	if *rootTask.Left != 2 || *rootTask.Right != 2 {
 		t.Fatalf("Child tasks not 2")
 	}
 
@@ -311,5 +315,28 @@ func TestTasks(t *testing.T) {
 
 	if err := GenTasks(&tasks, e.E[i]); err != nil {
 		t.Fatalf("Error generating task tree: %s", err.Error())
+	}
+
+	var task *Task
+	if task = GetReadyTask(&tasks); task != rootTask {
+		t.Fatalf("No task")
+	}
+
+	if err := FinishTask(&tasks, task.ID, 4); err != nil {
+		t.Fatalf("Cannot finish task: %s", err.Error())
+	}
+
+	if *rootTask.Left != 4.0 {
+		t.Fatalf("Task not done")
+	}
+
+	CheckExpressions(db, &e, &tasks)
+
+	if !expr.Finished {
+		t.Fatal("Expr not finished")
+	}
+
+	if expr.Result != 4.0 {
+		t.Fatalf("Wrong answer")
 	}
 }
