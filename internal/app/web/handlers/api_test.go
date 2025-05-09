@@ -173,17 +173,9 @@ func TestAPI(t *testing.T) {
 	}
 
 	if !t.Run("Expressions", func(t *testing.T) {
-		wg := sync.WaitGroup{}
-
 		for _, test := range exprTests {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				apiTester(t, http.MethodPost, test.CalcRequest, "/api/v1/calculate", Calculate, test.pass, false)
-			}()
+			apiTester(t, http.MethodPost, test.CalcRequest, "/api/v1/calculate", Calculate, test.pass, false)
 		}
-		wg.Wait()
-
 		apiTester(t, http.MethodPost, []byte("test"), "/api/v1/Cclculate", Calculate, false, true)
 	}) {
 		return
