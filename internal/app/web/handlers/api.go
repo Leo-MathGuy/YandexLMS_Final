@@ -132,6 +132,9 @@ func Calculate(w http.ResponseWriter, r *http.Request) {
 	} else if response, err := json.Marshal(&CalcResponse{id}); err != nil {
 		logging.Error("Error marhshaling response: %s", err.Error())
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	} else if err := storage.GenTasks(&storage.T, storage.E.E[id]); err != nil {
+		logging.Error("Error generating tasks: %s", err.Error())
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	} else {
 		w.Write(response)
 	}

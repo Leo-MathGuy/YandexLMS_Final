@@ -52,6 +52,7 @@ Purpose:
 * Processes expressions into an AST for later calculation by the agent
 * Manages and serves tasks
 * Saves to and loads from a sqlite database
+* Serves a gRPC server for the agent
 
 Features:
 

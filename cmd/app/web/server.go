@@ -46,7 +46,14 @@ func initServer() {
 	handlers.CheckTemplates()
 
 	logging.Log("Loading expressions")
-	storage.LoadExpressions(storage.D, &storage.E)
+	if err := storage.LoadExpressions(storage.D, &storage.E); err != nil {
+		logging.Panic("Error loading expressions")
+	}
+
+	logging.Log("Generating tasks")
+	if err := storage.GenAllTasks(&storage.T, &storage.E); err != nil {
+		logging.Panic("Error generating tasks")
+	}
 }
 
 func RunServer() error {
@@ -60,7 +67,7 @@ func RunServer() error {
 	mux := createServer()
 	initServer()
 
-	logging.Log("Server starting, press enter to stop\n")
+	logging.Log("Server starting on :8080, press enter to stop\n")
 	err := http.ListenAndServe(":8080", mux)
 	logging.Panic("Server failed with error: %s\n", err.Error())
 

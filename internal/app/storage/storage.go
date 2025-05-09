@@ -375,6 +375,11 @@ func GenTasks(tasks *Tasks, expr *Expression) error {
 	}
 }
 
+func DeleteTask(tasks *Tasks, id uint) {
+	delete(tasks.T, id)
+	tasks.Keys = slices.DeleteFunc(tasks.Keys, func(x uint) bool { return id == x })
+}
+
 func DeleteTaskRec(tasks *Tasks, task *Task) {
 	if task.LeftT != nil {
 		DeleteTaskRec(tasks, task.LeftT)
@@ -385,8 +390,7 @@ func DeleteTaskRec(tasks *Tasks, task *Task) {
 
 	tasks.Lock()
 	defer tasks.Unlock()
-	delete(tasks.T, task.ID)
-	tasks.Keys = slices.DeleteFunc[[]uint, uint](tasks.Keys, func(x uint) bool { return task.ID == x })
+	DeleteTask(tasks, task.ID)
 }
 
 func FlattenTask(tasks *Tasks, task *Task) {
@@ -396,7 +400,7 @@ func FlattenTask(tasks *Tasks, task *Task) {
 			defer tasks.Unlock()
 
 			task.Left = task.LeftT.Left
-			delete(tasks.T, task.LeftT.ID)
+			DeleteTask(tasks, task.LeftT.ID)
 			task.LeftT = nil
 		}()
 
@@ -412,7 +416,7 @@ func FlattenTask(tasks *Tasks, task *Task) {
 			defer tasks.Unlock()
 
 			task.Right = task.RightT.Left
-			delete(tasks.T, task.RightT.ID)
+			DeleteTask(tasks, task.RightT.ID)
 			task.RightT = nil
 		}()
 	} else {
@@ -449,6 +453,8 @@ func FinishTask(tasks *Tasks, id uint, result float64) error {
 				logging.Error("something wrong with parent: %d", task.ID)
 				return fmt.Errorf("something wrong with parent")
 			}
+
+			DeleteTask(tasks, id)
 		} else {
 			task.Left = processing.FloatPtr(result)
 			task.Right = nil
@@ -466,6 +472,12 @@ func GetReadyTask(tasks *Tasks) *Task {
 
 	for _, k := range tasks.Keys {
 		task := tasks.T[k]
+
+		if task == nil {
+			DeleteTask(tasks, k)
+			continue
+		}
+
 		if task.LeftT != nil || task.RightT != nil {
 			continue
 		}
@@ -477,5 +489,21 @@ func GetReadyTask(tasks *Tasks) *Task {
 		return task
 	}
 
+	return nil
+}
+
+func GenAllTasks(tasks *Tasks, exprs *Expressions) error {
+	exprs.Lock()
+	defer exprs.Unlock()
+	for _, v := range exprs.E {
+		if v.Finished || v.TaskID != 0 {
+			continue
+		}
+
+		err := GenTasks(tasks, v)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }

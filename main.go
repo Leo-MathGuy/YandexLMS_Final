@@ -7,6 +7,7 @@ import (
 
 	"github.com/Leo-MathGuy/YandexLMS_Final/cmd/app/web"
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/logging"
+	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/web/grpc"
 )
 
 func waitForEnter(wg *sync.WaitGroup) {
@@ -27,6 +28,7 @@ func main() {
 	}
 
 	go web.RunServer()
+	go grpc.StartServer(":5050")
 
 	end := sync.WaitGroup{}
 	end.Add(1)
