@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package tasks;
+
+option go_package = "internal/grpc";
+
+service Tasks {
+    rpc GetTask (Empty) returns (TaskData);
+    rpc SubmitTask (TaskSubmit) returns (Empty);
+}
+
+message TaskData {
+    uint32  id       = 1;
+    double left     = 2;
+    double right    = 3;
+    string  operator = 4;
+    bool    have     = 5;
+}
+
+message TaskSubmit {
+    uint32  id     = 1;
+    double result = 2;
+}
+
+message Empty {}

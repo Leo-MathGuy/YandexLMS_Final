@@ -255,7 +255,7 @@ func TestTasks(t *testing.T) {
 	}
 	CreateTables(db)
 
-	tasks := Tasks{make(map[uint]*Task), 0, sync.RWMutex{}}
+	tasks := Tasks{make(map[uint]*Task), make([]uint, 0), 0, sync.RWMutex{}}
 
 	if AddUser(db, "bob", "123") != nil {
 		t.Fatal("Error adding user")
@@ -318,8 +318,10 @@ func TestTasks(t *testing.T) {
 	}
 
 	var task *Task
-	if task = GetReadyTask(&tasks); task != rootTask {
+	if task = GetReadyTask(&tasks); task == nil {
 		t.Fatalf("No task")
+	} else if task != rootTask {
+		t.Fatalf("Wrong task")
 	}
 
 	if err := FinishTask(&tasks, task.ID, 4); err != nil {

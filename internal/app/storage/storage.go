@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -300,8 +301,9 @@ func CheckExpressions(db *sql.DB, e *Expressions, t *Tasks) {
 
 // MARK: Tasks
 type Tasks struct {
-	T  map[uint]*Task
-	Id uint
+	T    map[uint]*Task
+	Keys []uint // To keep earlier tasks higher priority
+	Id   uint
 	sync.RWMutex
 }
 
@@ -320,6 +322,8 @@ type Task struct {
 	Sent   bool
 }
 
+var T Tasks = Tasks{make(map[uint]*Task), make([]uint, 0), 0, sync.RWMutex{}}
+
 func GetTasks(tasks *Tasks, n *processing.Node, parent uint) (*Task, error) {
 	var t Task
 
@@ -331,6 +335,7 @@ func GetTasks(tasks *Tasks, n *processing.Node, parent uint) (*Task, error) {
 		tasks.Lock()
 		defer tasks.Unlock()
 		tasks.T[tasks.Id] = &t
+		tasks.Keys = append(tasks.Keys, tasks.Id)
 		return &t, nil
 	}
 
@@ -340,6 +345,7 @@ func GetTasks(tasks *Tasks, n *processing.Node, parent uint) (*Task, error) {
 		tasks.Lock()
 		defer tasks.Unlock()
 		tasks.T[myId] = &t
+		tasks.Keys = append(tasks.Keys, myId)
 	}()
 
 	if l, err := GetTasks(tasks, n.Left, myId); err != nil {
@@ -380,6 +386,7 @@ func DeleteTaskRec(tasks *Tasks, task *Task) {
 	tasks.Lock()
 	defer tasks.Unlock()
 	delete(tasks.T, task.ID)
+	tasks.Keys = slices.DeleteFunc[[]uint, uint](tasks.Keys, func(x uint) bool { return task.ID == x })
 }
 
 func FlattenTask(tasks *Tasks, task *Task) {
@@ -457,7 +464,8 @@ func GetReadyTask(tasks *Tasks) *Task {
 	tasks.RLock()
 	defer tasks.RUnlock()
 
-	for _, task := range tasks.T {
+	for _, k := range tasks.Keys {
+		task := tasks.T[k]
 		if task.LeftT != nil || task.RightT != nil {
 			continue
 		}
