@@ -13,7 +13,7 @@ import (
 
 const (
 	workerCount = 5
-	adress      = ":5050"
+	address     = ":5050"
 )
 
 func createWorker(ctx context.Context, client pb.TasksClient, id int) {
@@ -22,6 +22,7 @@ func createWorker(ctx context.Context, client pb.TasksClient, id int) {
 		select {
 		case <-ctx.Done():
 			logging.Log("Agent thread %d exiting", id)
+			return
 		default:
 			resp, err := client.GetTask(ctx, &pb.Empty{})
 
@@ -32,7 +33,7 @@ func createWorker(ctx context.Context, client pb.TasksClient, id int) {
 
 			if !resp.Have {
 				time.Sleep(1 * time.Second)
-				return
+				continue
 			}
 
 			result := func() float64 {
@@ -71,19 +72,18 @@ func createWorker(ctx context.Context, client pb.TasksClient, id int) {
 	}
 }
 
-func StartThreads(ctx context.Context) {
+func StartThreads(ctx context.Context) *grpc.ClientConn {
 	var conn *grpc.ClientConn
 	for i := range 5 {
 		var err error
-		conn, err = grpc.NewClient(adress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		conn, err = grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err == nil {
 			continue
 		}
-		if i == 4 && err != nil {
+		if i == 4 {
 			logging.Panic("Failed to connect")
 		}
 	}
-	defer conn.Close()
 	client := pb.NewTasksClient(conn)
 
 	for v := range 5 {
@@ -91,4 +91,5 @@ func StartThreads(ctx context.Context) {
 	}
 
 	logging.Log("Agent threads created")
+	return conn
 }

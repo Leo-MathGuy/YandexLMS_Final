@@ -16,14 +16,11 @@ import (
 func waitForEnter(wg *sync.WaitGroup) {
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
+	logging.Log("Got enter")
 	wg.Done()
 }
 
 func main() {
-	if _, err := os.Stat("web"); os.IsNotExist(err) {
-		panic("run main in main directory please")
-	}
-
 	if logger, err := logging.CreateLogger(); err != nil {
 		panic("logger failed to initialize: " + err.Error())
 	} else {
@@ -35,12 +32,14 @@ func main() {
 
 	time.Sleep(time.Second)
 	ctx, cancel := context.WithCancel(context.Background())
-	agent.StartThreads(ctx)
+	conn := agent.StartThreads(ctx)
+	defer conn.Close()
 
 	end := sync.WaitGroup{}
 	end.Add(1)
 	go waitForEnter(&end)
 	end.Wait()
+
 	logging.Log("Exiting...")
 	cancel()
 	time.Sleep(2 * time.Second)

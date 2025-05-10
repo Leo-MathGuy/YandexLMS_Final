@@ -11,7 +11,8 @@ import (
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
-	agent.StartThreads(ctx)
+	conn := agent.StartThreads(ctx)
+	defer conn.Close()
 
 	go func() {
 		logging.Log("Agent started. Press enter to stop")
