@@ -324,7 +324,7 @@ func TestTasks(t *testing.T) {
 		t.Fatalf("Wrong task")
 	}
 
-	if err := FinishTask(&tasks, task.ID, 4); err != nil {
+	if err := FinishTask(db, &tasks, &e, task.ID, 4); err != nil {
 		t.Fatalf("Cannot finish task: %s", err.Error())
 	}
 

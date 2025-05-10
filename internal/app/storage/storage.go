@@ -308,11 +308,12 @@ type Tasks struct {
 }
 
 type Task struct {
-	ID    uint
-	Left  *float64
-	Right *float64
-	Op    *rune
-	Value bool
+	ID     uint
+	Left   *float64
+	Right  *float64
+	Op     *rune
+	Value  bool
+	ExprId uint
 
 	LeftT  *Task
 	RightT *Task
@@ -331,7 +332,7 @@ func GetTasks(tasks *Tasks, n *processing.Node, parent uint) (*Task, error) {
 	myId := tasks.Id
 
 	if n.IsValue {
-		t = Task{tasks.Id, n.Value, nil, nil, true, nil, nil, &parent, n, false}
+		t = Task{tasks.Id, n.Value, nil, nil, true, 0, nil, nil, &parent, n, false}
 		tasks.Lock()
 		defer tasks.Unlock()
 		tasks.T[tasks.Id] = &t
@@ -339,7 +340,7 @@ func GetTasks(tasks *Tasks, n *processing.Node, parent uint) (*Task, error) {
 		return &t, nil
 	}
 
-	t = Task{myId, nil, nil, n.Op, false, nil, nil, &parent, n, false}
+	t = Task{myId, nil, nil, n.Op, false, 0, nil, nil, &parent, n, false}
 
 	func() {
 		tasks.Lock()
@@ -370,6 +371,7 @@ func GenTasks(tasks *Tasks, expr *Expression) error {
 		return err
 	} else {
 		expr.TaskID = t.ID
+		t.ExprId = expr.ID
 		FlattenTask(tasks, t)
 		return nil
 	}
@@ -426,7 +428,7 @@ func FlattenTask(tasks *Tasks, task *Task) {
 	}
 }
 
-func FinishTask(tasks *Tasks, id uint, result float64) error {
+func FinishTask(db *sql.DB, tasks *Tasks, e *Expressions, id uint, result float64) error {
 	tasks.Lock()
 	defer tasks.Unlock()
 
@@ -456,9 +458,16 @@ func FinishTask(tasks *Tasks, id uint, result float64) error {
 
 			DeleteTask(tasks, id)
 		} else {
-			task.Left = processing.FloatPtr(result)
-			task.Right = nil
-			task.Value = true
+			e.Lock()
+			defer e.Unlock()
+			ex := e.E[task.ExprId]
+			ex.Finished = true
+			ex.Result = result
+			_, err := db.Exec("UPDATE Expressions SET done = ?, result = ? WHERE id = ?", true, result, task.ExprId)
+			if err != nil {
+				return err
+			}
+			DeleteTaskRec(tasks, task)
 		}
 
 		return nil

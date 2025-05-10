@@ -54,7 +54,7 @@ func (s *taskServer) GetTask(ctx context.Context, req *pb.Empty) (*pb.TaskData, 
 }
 
 func (s *taskServer) SubmitTask(ctx context.Context, req *pb.TaskSubmit) (*pb.Empty, error) {
-	return &pb.Empty{}, storage.FinishTask(&storage.T, uint(req.Id), req.Result)
+	return &pb.Empty{}, storage.FinishTask(storage.D, &storage.T, &storage.E, uint(req.Id), req.Result)
 }
 
 type GRPCControl struct {

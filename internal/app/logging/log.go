@@ -15,7 +15,7 @@ func CreateLogger() (logger *log.Logger, err error) {
 	}
 
 	w := io.MultiWriter(os.Stdout, f)
-	logger = log.New(w, "APP: ", log.Ldate|log.Ltime|log.Lmicroseconds)
+	logger = log.New(w, "", log.Ldate|log.Ltime|log.Lmicroseconds)
 
 	return logger, nil
 }

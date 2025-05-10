@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	workerCount = 5
+	workerCount = 1
 	address     = ":5050"
 )
 
@@ -35,6 +35,7 @@ func createWorker(ctx context.Context, client pb.TasksClient, id int) {
 				time.Sleep(1 * time.Second)
 				continue
 			}
+			logging.Log("Got task")
 
 			result := func() float64 {
 				defer func() {

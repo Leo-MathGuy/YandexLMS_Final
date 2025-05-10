@@ -32,5 +32,5 @@ function handleSubmit(event) {
     xhr.send(JSON.stringify(data));
 }
 
-document.getElementById("form").addEventListener("submit", handleSubmit);
+document.getElementById("form1").addEventListener("submit", handleSubmit);
 document.getElementById("submit").disabled = false;
