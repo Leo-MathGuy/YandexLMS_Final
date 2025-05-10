@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-
-	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/logging"
 )
 
 // The node of the AST
@@ -40,27 +38,27 @@ type nodeproc func([]ExprToken, uint, nodeproc, int) *Node
 // Recursive Descent Parsing algorithm
 // CANNOT HANDLE UNARY
 func NodeGen(tokens []ExprToken, mode uint, f nodeproc, level int) *Node {
-	// Shortcut for number values
+	// Shortcut for single numbers
 	if len(tokens) == 1 {
-		return &Node{true, tokens[0].valueF, nil, nil, nil, nil}
+		return &Node{IsValue: true, Value: tokens[0].valueF}
 	}
 
-	root := Node{}
-	currentNode := &root
-	currentExpr := make([]ExprToken, 0)
-	paren := 0
-
-	switch mode {
-	case expr, term:
-		sep := "*/" // What separates groups
-		if mode == expr {
-			sep = "+-"
+	// For expr and term we split on current-level operators,
+	// but build the tree left-associatively.
+	if mode == expr || mode == term {
+		sep := "+-"
+		if mode == term {
+			sep = "*/"
 		}
 
-		for _, v := range tokens {
-			// Treat expression in parentheses as one group
-			if v.tokenType == parentheses {
-				switch rune(*v.valueI) {
+		var tree *Node // root of our growing AST
+		var last *Node // the most recent operator node
+		var currentExpr []ExprToken
+		paren := 0
+
+		for _, tok := range tokens {
+			if tok.tokenType == parentheses {
+				switch rune(*tok.valueI) {
 				case '(':
 					paren++
 				case ')':
@@ -68,43 +66,57 @@ func NodeGen(tokens []ExprToken, mode uint, f nodeproc, level int) *Node {
 				}
 			}
 
-			if v.tokenType == operator && strings.Contains(sep, string(rune(*v.valueI))) && paren == 0 {
-				// Advance the AST tree
-				currentNode.Left = f(currentExpr, mode+1, f, level+1)
-				currentNode.Right = &Node{}
+			if tok.tokenType == operator && paren == 0 && strings.ContainsRune(sep, rune(*tok.valueI)) {
+				// first, if this isn’t the very first operator, close out the previous one:
+				if last != nil {
+					last.Right = f(currentExpr, mode+1, f, level+1)
+					last.Right.Parent = last
+				}
 
-				currentNode.Left.Parent = currentNode
-				currentNode.Right.Parent = currentNode
+				// build the new operator node
+				opNode := &Node{IsValue: false, Op: RunePtr(rune(*tok.valueI))}
+				if tree == nil {
+					// very first operator: its left child is everything so far
+					opNode.Left = f(currentExpr, mode+1, f, level+1)
+					opNode.Left.Parent = opNode
+					tree = opNode
+				} else {
+					// subsequent operator: make it the new root,
+					// with left = entire old tree
+					opNode.Left = tree
+					tree.Parent = opNode
+					tree = opNode
+				}
+				// prepare its right child placeholder:
+				opNode.Right = &Node{}
+				opNode.Right.Parent = opNode
 
-				currentNode.IsValue = false
-				currentNode.Op = RunePtr(rune(*v.valueI))
-				currentNode = currentNode.Right
-				currentExpr = make([]ExprToken, 0)
+				// and remember this as the last operator we need to close
+				last = opNode
+
+				// reset tokens accumulator
+				currentExpr = nil
 			} else {
-				currentExpr = append(currentExpr, v)
+				currentExpr = append(currentExpr, tok)
 			}
 		}
 
-		if currentNode.Parent != nil {
-			// Finish the tree
-			currentNode.Parent.Right = f(currentExpr, mode+1, f, level+1)
-			return &root
-		} else {
-			// Only 1 group was found
-			return f(currentExpr, mode+1, f, level+1)
+		if last != nil {
+			// close out the final operator:
+			last.Right = f(currentExpr, mode+1, f, level+1)
+			last.Right.Parent = last
+			return tree
 		}
+		// no top-level operator found → dive one level deeper
+		return f(tokens, mode+1, f, level+1)
+	}
 
-	case factor:
-		// Parentheses expr
-		defer func() {
-			if recover() != nil {
-				logging.Panic("Unary passed into NodeGen")
-			}
-		}()
+	// finally, factor must be a parenthesized sub-expr
+	if mode == factor {
 		return f(tokens[1:len(tokens)-1], expr, f, level+1)
 	}
 
-	panic("no") // 🗿
+	return nil
 }
 
 // Assumes expression has passed validation

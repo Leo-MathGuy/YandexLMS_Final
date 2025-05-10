@@ -11,9 +11,18 @@
         <label for="expression">Expression:
             <input type="text" id="expression" name="expression" minlength="1" pattern="^[\(\)0-9*\/+\- .]+$" required>
         </label>
-        <input id="submit" type="submit" value="Calculate!" disabled>
-        <p id="error"></p>
-        <p id="result"></p>
+        <input id="submit1" type="submit" value="Calculate!" disabled>
+        <p id="error1"></p>
+        <p id="result1"></p>
+    </form>
+    <hr>
+    <form id="form2">
+        <label for="expression">Expression ID to get:
+            <input type="number" id="id" name="id" min="0" required>
+        </label>
+        <input id="submit2" type="submit" value="Request!" disabled>
+        <p id="error2"></p>
+        <p id="result2"></p>
     </form>
 </main>
 {{end}}

@@ -231,6 +231,11 @@ func LoadExpression(e *Expressions, id, uid uint, str string, result float64, do
 	expr := &Expression{id, uid, str, result, 0, done, eval}
 	e.E[id] = expr
 
+	if eval != nil && eval.IsValue {
+		expr.Finished = true
+		expr.Result = *eval.Value
+	}
+
 	return nil
 }
 
@@ -269,7 +274,7 @@ func DeleteExpression(db *sql.DB, e *Expressions, id uint) error {
 
 // Load expressions from db - generating node trees may take some time
 func LoadExpressions(db *sql.DB, e *Expressions) error {
-	rows, err := db.Query("SELECT * FROM Expressions")
+	rows, err := db.Query("SELECT id, uid, expr, result, done FROM Expressions")
 	if err != nil {
 		return err
 	}
@@ -455,6 +460,7 @@ func FinishTask(db *sql.DB, tasks *Tasks, e *Expressions, id uint, result float6
 		logging.Error("task recieved before expected: %d", task.ID)
 		return fmt.Errorf("there are still dependencies")
 	} else {
+		task.Left = &result
 		if *task.Parent != 0 {
 			parent := tasks.T[*task.Parent]
 			if parent.LeftT == task {
@@ -475,6 +481,7 @@ func FinishTask(db *sql.DB, tasks *Tasks, e *Expressions, id uint, result float6
 			ex := e.E[task.ExprId]
 			ex.Finished = true
 			ex.Result = result
+			ex.TaskID = 0
 			_, err := db.Exec("UPDATE Expressions SET done = ?, result = ? WHERE id = ?", true, result, task.ExprId)
 			if err != nil {
 				return err
@@ -496,18 +503,10 @@ func GetReadyTask(tasks *Tasks) *Task {
 
 		if task == nil {
 			DeleteTask(tasks, k)
-			continue
+		} else if !(task.LeftT != nil || task.RightT != nil || task.Sent) {
+			task.Sent = true
+			return task
 		}
-
-		if task.LeftT != nil || task.RightT != nil {
-			continue
-		}
-		if task.Sent {
-			continue
-		}
-
-		task.Sent = true
-		return task
 	}
 
 	return nil
