@@ -2,7 +2,10 @@ package grpc
 
 import (
 	"context"
+	"fmt"
 	"net"
+	"os"
+	"strconv"
 
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/logging"
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/storage"
@@ -20,7 +23,33 @@ func (s *taskServer) GetTask(ctx context.Context, req *pb.Empty) (*pb.TaskData, 
 	if task == nil {
 		return &pb.TaskData{Have: false}, nil
 	} else {
-		return &pb.TaskData{Id: uint32(task.ID), Left: *task.Left, Right: *task.Right, Operator: string(*task.Op), Have: true}, nil
+		var time string
+
+		switch *task.Op {
+		case '+':
+			time = os.Getenv("TIME_ADDITION_MS")
+		case '-':
+			time = os.Getenv("TIME_SUBTRACTION_MS")
+		case '*':
+			time = os.Getenv("TIME_MULTIPLICATIONS_MS")
+		case '/':
+			time = os.Getenv("TIME_DIVISIONS_MS")
+		}
+
+		var timeint uint64
+		if time == "" {
+			timeint = 1000
+		} else {
+			var err error
+			timeint, err = strconv.ParseUint(time, 10, 64)
+
+			if err != nil {
+				logging.Error("Could not create request: %s", err.Error())
+				return &pb.TaskData{}, fmt.Errorf("cannot create request")
+			}
+		}
+
+		return &pb.TaskData{Id: uint32(task.ID), Left: *task.Left, Right: *task.Right, Operator: string(*task.Op), Have: true, OpTime: timeint}, nil
 	}
 }
 

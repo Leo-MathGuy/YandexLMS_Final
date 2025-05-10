@@ -15,6 +15,7 @@ message TaskData {
     double right    = 3;
     string  operator = 4;
     bool    have     = 5;
+    uint64  opTime = 6;
 }
 
 message TaskSubmit {

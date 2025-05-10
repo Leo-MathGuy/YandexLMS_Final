@@ -28,6 +28,7 @@ type TaskData struct {
 	Right         float64                `protobuf:"fixed64,3,opt,name=right,proto3" json:"right,omitempty"`
 	Operator      string                 `protobuf:"bytes,4,opt,name=operator,proto3" json:"operator,omitempty"`
 	Have          bool                   `protobuf:"varint,5,opt,name=have,proto3" json:"have,omitempty"`
+	OpTime        uint64                 `protobuf:"varint,6,opt,name=opTime,proto3" json:"opTime,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -95,6 +96,13 @@ func (x *TaskData) GetHave() bool {
 		return x.Have
 	}
 	return false
+}
+
+func (x *TaskData) GetOpTime() uint64 {
+	if x != nil {
+		return x.OpTime
+	}
+	return 0
 }
 
 type TaskSubmit struct {
@@ -189,13 +197,14 @@ var File_proto_tasks_proto protoreflect.FileDescriptor
 
 const file_proto_tasks_proto_rawDesc = "" +
 	"\n" +
-	"\x11proto/tasks.proto\x12\x05tasks\"t\n" +
+	"\x11proto/tasks.proto\x12\x05tasks\"\x8c\x01\n" +
 	"\bTaskData\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12\x12\n" +
 	"\x04left\x18\x02 \x01(\x01R\x04left\x12\x14\n" +
 	"\x05right\x18\x03 \x01(\x01R\x05right\x12\x1a\n" +
 	"\boperator\x18\x04 \x01(\tR\boperator\x12\x12\n" +
-	"\x04have\x18\x05 \x01(\bR\x04have\"4\n" +
+	"\x04have\x18\x05 \x01(\bR\x04have\x12\x16\n" +
+	"\x06opTime\x18\x06 \x01(\x04R\x06opTime\"4\n" +
 	"\n" +
 	"TaskSubmit\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12\x16\n" +

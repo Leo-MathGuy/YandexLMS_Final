@@ -2,12 +2,15 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/Leo-MathGuy/YandexLMS_Final/cmd/app/web"
+	"github.com/Leo-MathGuy/YandexLMS_Final/internal/agent"
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/logging"
-	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/web/grpc"
+	pc "github.com/Leo-MathGuy/YandexLMS_Final/internal/app/web/grpc"
 )
 
 func waitForEnter(wg *sync.WaitGroup) {
@@ -28,11 +31,18 @@ func main() {
 	}
 
 	go web.RunServer()
-	go grpc.StartServer(":5050")
+	go pc.StartServer(":5050")
+
+	time.Sleep(time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
+	agent.StartThreads(ctx)
 
 	end := sync.WaitGroup{}
 	end.Add(1)
 	go waitForEnter(&end)
 	end.Wait()
+	logging.Log("Exiting...")
+	cancel()
+	time.Sleep(2 * time.Second)
 	logging.Log("Quit.\n")
 }
