@@ -10,13 +10,13 @@ import (
 	"github.com/Leo-MathGuy/YandexLMS_Final/cmd/app/web"
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/agent"
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/logging"
+	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/storage"
 	pc "github.com/Leo-MathGuy/YandexLMS_Final/internal/app/web/grpc"
 )
 
 func waitForEnter(wg *sync.WaitGroup) {
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
-	logging.Log("Got enter")
 	wg.Done()
 }
 
@@ -41,6 +41,8 @@ func main() {
 	end.Wait()
 
 	logging.Log("Exiting...")
+	close(web.StopDb)
+	storage.DisconnectDB()
 	cancel()
 	time.Sleep(2 * time.Second)
 	logging.Log("Quit.\n")

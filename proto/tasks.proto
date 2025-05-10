@@ -21,6 +21,7 @@ message TaskData {
 message TaskSubmit {
     uint32  id     = 1;
     double result = 2;
+    string error = 3;
 }
 
 message Empty {}

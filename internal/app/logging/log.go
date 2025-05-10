@@ -1,14 +1,35 @@
 package logging
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
+	"path/filepath"
+	"time"
 )
 
 var Logger *log.Logger = log.Default()
 
+const logFilePath = "logs/appLog.log"
+
+func rotateFile() {
+	info, err := os.Stat(logFilePath)
+	if err != nil || info.Size() <= 1024*64 { // 64KB
+		return
+	}
+
+	timestamp := time.Now().UTC().Format("20060102T150405")
+
+	baseName := fmt.Sprintf("appLog%s%s", timestamp, ".bak")
+	newPath := filepath.Join(filepath.Dir(logFilePath), baseName)
+
+	os.Rename(logFilePath, newPath)
+}
+
 func CreateLogger() (logger *log.Logger, err error) {
+	rotateFile() // I kinda dont care if this doesnt work
+
 	f, err := os.OpenFile("logs/appLog.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err

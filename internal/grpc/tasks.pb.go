@@ -109,6 +109,7 @@ type TaskSubmit struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            uint32                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	Result        float64                `protobuf:"fixed64,2,opt,name=result,proto3" json:"result,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -155,6 +156,13 @@ func (x *TaskSubmit) GetResult() float64 {
 		return x.Result
 	}
 	return 0
+}
+
+func (x *TaskSubmit) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
 }
 
 type Empty struct {
@@ -204,11 +212,12 @@ const file_proto_tasks_proto_rawDesc = "" +
 	"\x05right\x18\x03 \x01(\x01R\x05right\x12\x1a\n" +
 	"\boperator\x18\x04 \x01(\tR\boperator\x12\x12\n" +
 	"\x04have\x18\x05 \x01(\bR\x04have\x12\x16\n" +
-	"\x06opTime\x18\x06 \x01(\x04R\x06opTime\"4\n" +
+	"\x06opTime\x18\x06 \x01(\x04R\x06opTime\"J\n" +
 	"\n" +
 	"TaskSubmit\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12\x16\n" +
-	"\x06result\x18\x02 \x01(\x01R\x06result\"\a\n" +
+	"\x06result\x18\x02 \x01(\x01R\x06result\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"\a\n" +
 	"\x05Empty2`\n" +
 	"\x05Tasks\x12(\n" +
 	"\aGetTask\x12\f.tasks.Empty\x1a\x0f.tasks.TaskData\x12-\n" +

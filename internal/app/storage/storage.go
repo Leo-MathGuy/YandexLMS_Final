@@ -6,6 +6,7 @@ import (
 	"os"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -46,8 +47,8 @@ type Expressions struct {
 var D *sql.DB
 var defaultDb string = "sqlite3.db"
 
-// Connect DB to the public D variable
-func ConnectDB() chan struct{} {
+// Connect DB to the D variable
+func ConnectDB() chan<- struct{} {
 	var database *sql.DB
 	if s := os.Getenv("APPDB"); s != "" {
 		database, _ = sql.Open("sqlite3", s)
@@ -100,7 +101,8 @@ func CreateTables(db *sql.DB) error {
 	uid INT NOT NULL,
 	expr STRING NOT NULL,
 	result DOUBLE DEFAULT 0,
-	done BOOLEAN DEFAULT FALSE
+	done BOOLEAN DEFAULT FALSE,
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	)
 	`)
 	return err
@@ -242,7 +244,7 @@ func AddExpression(e *Expressions, db *sql.DB, uid uint, str string) (uint, erro
 	var id uint = 0
 	r.Scan(&id)
 	if err := LoadExpression(e, id, uid, str, 0, false); err != nil {
-		db.Exec("DELETE FROM Expressions WHERE id=?", id) // Attempt to clear - no error checking here
+		DeleteExpression(db, e, id) // Attempt to clear - no error checking here
 		return 0, err
 	}
 
@@ -253,6 +255,16 @@ func AddExpression(e *Expressions, db *sql.DB, uid uint, str string) (uint, erro
 	} else {
 		return id, nil
 	}
+}
+
+func DeleteExpression(db *sql.DB, e *Expressions, id uint) error {
+	res, err := db.Exec("DELETE FROM Expressions WHERE id=?", id)
+
+	if r, _ := res.RowsAffected(); r > 1 {
+		panic("Database was cleared " + strconv.FormatInt(r, 10))
+	}
+
+	return err
 }
 
 // Load expressions from db - generating node trees may take some time
@@ -467,7 +479,7 @@ func FinishTask(db *sql.DB, tasks *Tasks, e *Expressions, id uint, result float6
 			if err != nil {
 				return err
 			}
-			DeleteTaskRec(tasks, task)
+			DeleteTask(tasks, task.ID)
 		}
 
 		return nil

@@ -136,6 +136,7 @@ func Calculate(w http.ResponseWriter, r *http.Request) {
 		logging.Error("Error generating tasks: %s", err.Error())
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	} else {
+		logging.Log("Sending response %s", response)
 		w.Write(response)
 	}
 }

@@ -28,6 +28,8 @@ function handleSubmit(event) {
                 console.log(xhr.readyState);
             }
         }
+        console.log(xhr.status);
+        console.log(xhr.readyState);
     };
     xhr.send(JSON.stringify(data));
 }

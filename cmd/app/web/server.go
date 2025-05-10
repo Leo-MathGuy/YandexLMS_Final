@@ -15,6 +15,8 @@ import (
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/web/handlers"
 )
 
+var StopDb chan<- struct{}
+
 func createServer() *mux.Router {
 	util.Leave()
 	logging.Log(strings.Repeat("-", 80) + "\n")
@@ -39,21 +41,24 @@ func createServer() *mux.Router {
 
 func initServer() {
 	logging.Log("Connecting database")
-	storage.ConnectDB()
-	storage.CreateTables(storage.D)
+	stopDb := storage.ConnectDB()
+	if err := storage.CreateTables(storage.D); err != nil {
+		logging.Panic("Could not create tables: %s", err.Error())
+	}
 
 	logging.Log("Checking templates")
 	handlers.CheckTemplates()
 
 	logging.Log("Loading expressions")
 	if err := storage.LoadExpressions(storage.D, &storage.E); err != nil {
-		logging.Panic("Error loading expressions")
+		logging.Panic("Error loading expressions: %s", err.Error())
 	}
 
 	logging.Log("Generating tasks")
 	if err := storage.GenAllTasks(&storage.T, &storage.E); err != nil {
 		logging.Panic("Error generating tasks")
 	}
+	StopDb = stopDb
 }
 
 func RunServer() error {

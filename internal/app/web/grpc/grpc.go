@@ -54,6 +54,9 @@ func (s *taskServer) GetTask(ctx context.Context, req *pb.Empty) (*pb.TaskData, 
 }
 
 func (s *taskServer) SubmitTask(ctx context.Context, req *pb.TaskSubmit) (*pb.Empty, error) {
+	if req.Error != "" {
+		return &pb.Empty{}, storage.DeleteExpression(storage.D, &storage.E, uint(req.Id))
+	}
 	return &pb.Empty{}, storage.FinishTask(storage.D, &storage.T, &storage.E, uint(req.Id), req.Result)
 }
 
