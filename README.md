@@ -22,7 +22,7 @@ Alternatively, you can run the two programs separately (not recommended, as the 
 go run cmd/app/main.go
 
 # Terminal 2
-go run cmd/agent/
+go run cmd/agent/main.go
 ```
 
 ## Testing
@@ -34,12 +34,14 @@ Unit, integration, race condition and coverage tests can be run for the entire p
 WARNING: Running tests will delete the database
 
 ```bash
-go test -cover ./... -race
+go test ./... -race
 ```
+
+The frontend is styled and has a user friendly interface. The entire program can be tested that way.
 
 ### Testing the API
 
-You can test the API with a program like CURL. Commands are in the [API Documentation](#api-endpoints)
+You can test the API with CURL. Commands are in the [API Documentation](#api-endpoints)
 
 ## Documentation
 
@@ -60,6 +62,117 @@ Features:
 * In-depth error handling
 * Unit and integration tests
 
+### Agent (agent)
+
+Purpose:
+
+* Multithreaded calculation of individual tasks
+* Recieves tasks from the app
+
+Features:
+
+* Logging
+* Tests are done by the server intergration tests
+
 #### API Endpoints
 
-##### /api/v1/register
+##### POST /api/v1/register
+
+Register user.
+
+Rules:
+
+* Username not case-sensitive
+* Username must start with letter, but can contain numbers
+* Username and password must be 3-32 length
+
+Test command:
+
+```bash
+curl --location 'localhost:8080/api/v1/register' \
+--header 'Content-Type: application/json' \
+--data '{
+  "login": "bob",
+  "password": "123"
+}'
+```
+
+##### POST /api/v1/login
+
+Log into account. Returns a JWT token as the response body and a set-cookie for browsers
+
+Test command:
+
+```bash
+curl --location 'localhost:8080/api/v1/login' \
+--header 'Content-Type: application/json' \
+--data '{
+  "login": "bob",
+  "password": "123"
+}'
+```
+
+##### POST /api/v1/calculate
+
+Send expression. Must be logged in. Takes in token in json body
+
+Test command:
+
+```bash
+curl --location 'localhost:8080/api/v1/calculate' \
+--header 'Content-Type: application/json' \
+--data '{
+  "expression": "2+2",
+  "token": "
+}'
+```
+
+Returns:
+
+```json
+{"id":<id>}
+```
+
+##### GET /api/v1/expressions
+
+Returns expressions belonding to the currently logged in user. Takes in token as Authentication header
+
+Test command:
+
+```bash
+curl --location 'localhost:8080/api/v1/expressions' \
+--header 'Authentication: <token>' \
+```
+
+Returns:
+
+```json
+{
+    "expressions":[
+        {"id":1,"result":59,"status":true}, // Ready
+        {"id":2,"result":0,"status":false} // Processing
+        // And so on
+    ]
+}
+```
+
+##### GET /api/v1/expressions/{id}
+
+Returns expression under the given id, if it belongs to the currently logged in user. Takes in token as Authentication header
+
+Test command:
+
+```bash
+curl --location 'localhost:8080/api/v1/expressions/1' \
+--header 'Authentication: <token>' \
+```
+
+Returns:
+
+```json
+{"expression":{"id":1,"result":59,"status":true}} // Ready
+```
+
+```json
+{"expression":{"id":2,"result":0,"status":false}} // Processing
+```

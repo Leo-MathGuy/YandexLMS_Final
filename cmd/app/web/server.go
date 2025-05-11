@@ -38,6 +38,7 @@ func createServer() *mux.Router {
 	mux.HandleFunc("/calc", handlers.Calc).Methods("GET")
 	mux.HandleFunc("/login", handlers.Login).Methods("GET")
 	mux.HandleFunc("/register", handlers.Register).Methods("GET")
+	mux.HandleFunc("/sans", handlers.Sans).Methods("GET")
 	mux.HandleFunc("/", handlers.Index)
 	return mux
 }

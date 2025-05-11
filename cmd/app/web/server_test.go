@@ -56,6 +56,10 @@ func TestServer(t *testing.T) {
 	stop := storage.ConnectDB()
 	defer close(stop)
 
+	oldLogger := logging.Logger
+	defer func() { logging.Logger = oldLogger }()
+	logging.Logger = log.Default()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	conn := agent.StartThreads(ctx)
 	defer conn.Close()
@@ -64,11 +68,6 @@ func TestServer(t *testing.T) {
 	if err := storage.CreateTables(storage.D); err != nil {
 		t.Fatalf("Creating tables failed with %s", err.Error())
 	}
-
-	oldLogger := logging.Logger
-	defer func() { logging.Logger = oldLogger }()
-	logging.Logger = log.Default()
-
 	mux := createServer()
 	initServer()
 

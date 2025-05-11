@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/logging"
@@ -19,10 +20,12 @@ const (
 	address     = ":5050"
 )
 
-func createWorker(ctx context.Context, client pb.TasksClient, id int) {
+func createWorker(ctx context.Context, client pb.TasksClient, id int, wg *sync.WaitGroup) {
 	disconnected := false
 
 	logging.Log("Agent thread %d started", id)
+	wg.Done()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -123,9 +126,14 @@ func StartThreads(ctx context.Context) *grpc.ClientConn {
 	}
 	client := pb.NewTasksClient(conn)
 
+	wg := sync.WaitGroup{}
+
 	for v := range 5 {
-		go createWorker(ctx, client, v)
+		wg.Add(1)
+		go createWorker(ctx, client, v, &wg)
 	}
+
+	wg.Wait()
 
 	logging.Log("Agent threads created")
 	return conn

@@ -61,6 +61,12 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func Sans(w http.ResponseWriter, r *http.Request) {
+	if err := parseTemplate("sans.html").ExecuteTemplate(w, "sans.html", nil); err != nil {
+		logging.Error("Failure to render template: %s", err.Error())
+	}
+}
+
 type authData struct {
 	Link     string
 	Name     string
