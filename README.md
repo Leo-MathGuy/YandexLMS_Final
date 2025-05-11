@@ -15,7 +15,7 @@ A main.go from the project root directory launches both the app and the agent. y
 go run main.go
 ```
 
-Alternatively, you can run the two programs separately (not recommended, as the helper script initializes some shared systems):
+Alternatively, you can run the two programs separately (not recommended, as the helper script initializes shared logs):
 
 ```bash
 # Terminal 1
@@ -29,7 +29,7 @@ go run cmd/agent/main.go
 
 ### Tests
 
-Unit, integration, race condition and coverage tests can be run for the entire project by running the following command:
+Unit, integration and race condition tests can be run for the entire project by running the following command:
 
 WARNING: Running tests will delete the database
 
