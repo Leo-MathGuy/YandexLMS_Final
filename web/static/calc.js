@@ -45,14 +45,22 @@ function handleSubmit2(event) {
 
     var xhr = new XMLHttpRequest();
     var url = "/api/v1/expressions/" + formdata["id"];
-    xhr.open("POST", url, true);
+    xhr.open("GET", url, true);
     xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.setRequestHeader("Authentication", getCookie("token"));
     xhr.onreadystatechange = function () {
         if (xhr.readyState === 4) {
             if (xhr.status === 200) {
-                document.getElementById("result2").innerHTML = JSON.stringify(
-                    xhr.responseText
-                );
+                result = xhr.responseText;
+                result = JSON.parse(result)["expression"];
+
+                console.log(result);
+                if (result["status"]) {
+                    document.getElementById("result2").innerHTML =
+                        "Result: " + result["result"];
+                } else {
+                    document.getElementById("result2").innerHTML = "Processing";
+                }
             } else {
                 document.getElementById("error2").innerHTML = xhr.responseText;
                 console.log(xhr.status);

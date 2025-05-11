@@ -218,7 +218,7 @@ func ExpressionAPI(w http.ResponseWriter, r *http.Request) {
 	result, err := storage.GetExpressionForUser(storage.D, user, id)
 	if err != nil {
 		http.Error(w, "No such expression", http.StatusNotFound)
-		logging.Warning("No expression: %s", err.Error())
+		logging.Log("No expression: %s", err.Error())
 		return
 	}
 
