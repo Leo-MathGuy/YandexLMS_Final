@@ -105,6 +105,7 @@ input[type="submit"]:hover {
 }
 
 p#error1,
+p#error,
 p#error2 {
     color: red;
 }
