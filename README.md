@@ -3,6 +3,8 @@
 [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/Leo-MathGuy/YandexLMS_Final/go.yml?label=tests)](https://github.com/Leo-MathGuy/YandexLMS_Final/actions/workflows/go.yml)
 [![Coverage Status](https://coveralls.io/repos/github/Leo-MathGuy/YandexLMS_Final/badge.svg?branch=main)](https://coveralls.io/github/Leo-MathGuy/YandexLMS_Final?branch=main)
 
+[На русском](README_ru.md)
+
 This is the final project that took two weeks of great effort to complete.
 This is a demonstration of web development, REST API, JWT authentication, SQL database usage, and GRPC communication in Go,
 written from scratch in the form of a calculator app.
@@ -37,7 +39,7 @@ WARNING: Running tests will delete the database
 go test ./... -race
 ```
 
-The frontend is styled and has a user friendly interface. The entire program can be tested that way.
+The frontend is styled and has a user friendly interface. The entire program can be tested that way. You can reach it on [:8080](localhost:8080)
 
 ### Testing the API
 
