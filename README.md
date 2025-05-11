@@ -99,6 +99,17 @@ curl --location 'localhost:8080/api/v1/register' \
 }'
 ```
 
+Error:
+
+```bash
+curl --location 'localhost:8080/api/v1/register' \
+--header 'Content-Type: application/json' \
+--data '{
+  "login": "123",
+  "password": "123"
+}'
+```
+
 ##### POST /api/v1/login
 
 Log into account. Returns a JWT token as the response body and a set-cookie for browsers
@@ -110,6 +121,17 @@ curl --location 'localhost:8080/api/v1/login' \
 --header 'Content-Type: application/json' \
 --data '{
   "login": "bob",
+  "password": "123"
+}'
+```
+
+Error:
+
+```bash
+curl --location 'localhost:8080/api/v1/register' \
+--header 'Content-Type: application/json' \
+--data '{
+  "login": "eve",
   "password": "123"
 }'
 ```

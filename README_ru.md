@@ -97,6 +97,17 @@ curl --location 'localhost:8080/api/v1/register' \
 }'
 ```
 
+Ошибка:
+
+```bash
+curl --location 'localhost:8080/api/v1/register' \
+--header 'Content-Type: application/json' \
+--data '{
+  "login": "123",
+  "password": "123"
+}'
+```
+
 ##### POST /api/v1/login
 
 Войти в учетную запись. Возвращает токен JWT в качестве тела ответа и set-cookie для браузеров
@@ -108,6 +119,17 @@ curl --location 'localhost:8080/api/v1/login' \
 --header 'Content-Type: application/json' \
 --data '{
   "login": "bob",
+  "password": "123"
+}'
+```
+
+Ошибка:
+
+```bash
+curl --location 'localhost:8080/api/v1/register' \
+--header 'Content-Type: application/json' \
+--data '{
+  "login": "eve",
   "password": "123"
 }'
 ```
