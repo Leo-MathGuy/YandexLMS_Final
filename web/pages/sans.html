@@ -18,6 +18,7 @@
     var audio = new Audio('static/sans.mp3');
     document.getElementsByTagName("html")[0].onclick = function (event) {
         audio.play();
+        audio.playbackRate = 2
         document.getElementsByTagName("h1")[0].innerHTML = "SANS"
         document.getElementsByTagName("h1")[0].style.fontSize = "20vw"
     }
@@ -28,7 +29,7 @@
         background-image: url("/static/sans.jpeg");
         background-repeat: repeat;
         animation-name: sans;
-        animation-duration: 6s;
+        animation-duration: 20s;
         animation-timing-function: linear;
         animation-iteration-count: infinite;
 
@@ -67,7 +68,7 @@
             background-position: 1300px 1250px;
         }
 
-        62% {
+        87% {
             background-position: -0 1850px;
         }
 
