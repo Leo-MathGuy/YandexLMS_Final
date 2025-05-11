@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/logging"
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/processing"
 	"github.com/Leo-MathGuy/YandexLMS_Final/internal/app/storage"
+	"github.com/gorilla/mux"
 )
 
 type AuthRequest struct {
@@ -138,6 +140,96 @@ func Calculate(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.Write(response)
 	}
+}
+
+type ExpressionsResponse struct {
+	Exprs []storage.Expression `json:"expressions"`
+}
+
+func ExpressionsAPI(w http.ResponseWriter, r *http.Request) {
+	authToken := r.Header.Get("Authentication")
+	if authToken == "" {
+		http.Error(w, "Please log in", http.StatusForbidden)
+		return
+	}
+
+	user, err := storage.CheckToken(storage.D, authToken)
+
+	if err != nil {
+		http.Error(w, "Invalid token", http.StatusBadRequest)
+		logging.Error("Error reading token: %s", err.Error())
+		return
+	}
+
+	if user == nil {
+		http.Error(w, "Invalid token", http.StatusForbidden)
+		return
+	}
+
+	result, err := storage.GetExpressionsForUser(storage.D, user)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logging.Error("Error finding expressions: %s", err.Error())
+		return
+	}
+	unpointered := make([]storage.Expression, 0)
+	for _, v := range result {
+		unpointered = append(unpointered, *v)
+	}
+
+	response, err := json.Marshal(ExpressionsResponse{unpointered})
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logging.Error("Error marhshaling response: %s", err.Error())
+		return
+	}
+
+	w.Write(response)
+}
+
+type ExpressionResponse struct {
+	Expr storage.Expression `json:"expression"`
+}
+
+func ExpressionAPI(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+	id, _ := strconv.Atoi(idStr)
+
+	authToken := r.Header.Get("Authentication")
+	if authToken == "" {
+		http.Error(w, "Please log in", http.StatusForbidden)
+		return
+	}
+
+	user, err := storage.CheckToken(storage.D, authToken)
+
+	if err != nil {
+		http.Error(w, "Invalid token", http.StatusBadRequest)
+		logging.Error("Error reading token: %s", err.Error())
+		return
+	}
+
+	if user == nil {
+		http.Error(w, "Invalid token", http.StatusForbidden)
+		return
+	}
+
+	result, err := storage.GetExpressionForUser(storage.D, user, id)
+	if err != nil {
+		http.Error(w, "No such expression", http.StatusNotFound)
+		logging.Warning("No expression: %s", err.Error())
+		return
+	}
+
+	response, err := json.Marshal(ExpressionResponse{result})
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logging.Error("Error marhshaling response: %s", err.Error())
+		return
+	}
+
+	w.Write(response)
 }
 
 func Favicon(w http.ResponseWriter, r *http.Request) {

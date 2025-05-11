@@ -31,6 +31,9 @@ func createServer() *mux.Router {
 
 	mux.HandleFunc("/api/v1/calculate", handlers.Calculate).Methods("POST")
 
+	mux.HandleFunc("/api/v1/expressions", handlers.ExpressionsAPI).Methods("GET")
+	mux.HandleFunc("/api/v1/expressions/{id:[0-9]+}", handlers.ExpressionAPI).Methods("GET")
+
 	mux.HandleFunc("/favicon.ico", handlers.Favicon)
 	mux.HandleFunc("/calc", handlers.Calc).Methods("GET")
 	mux.HandleFunc("/login", handlers.Login).Methods("GET")

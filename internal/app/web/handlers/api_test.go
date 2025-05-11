@@ -19,6 +19,7 @@ func apiTester(
 	t *testing.T,
 	method string,
 	body any,
+	_ string,
 	url string,
 	f func(http.ResponseWriter, *http.Request),
 	expect bool,
@@ -72,7 +73,7 @@ func TestAPI(t *testing.T) {
 	defer close(stop)
 
 	t.Run("favicon", func(t *testing.T) {
-		apiTester(t, http.MethodGet, nil, "/favicon.ico", Favicon, true, false)
+		apiTester(t, http.MethodGet, nil, "", "/favicon.ico", Favicon, true, false)
 	})
 
 	type AuthTest struct {
@@ -104,7 +105,7 @@ func TestAPI(t *testing.T) {
 				wg.Add(1)
 				go func() {
 					defer wg.Done()
-					apiTester(t, http.MethodPost, test.AuthRequest, "/api/v1/register", RegisterAPI, test.pass, false)
+					apiTester(t, http.MethodPost, test.AuthRequest, "", "/api/v1/register", RegisterAPI, test.pass, false)
 				}()
 			}
 			wg.Wait()
@@ -117,12 +118,12 @@ func TestAPI(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				apiTester(t, http.MethodPost, test.AuthRequest, "/api/v1/register", RegisterAPI, test.pass, false)
+				apiTester(t, http.MethodPost, test.AuthRequest, "", "/api/v1/register", RegisterAPI, test.pass, false)
 			}()
 		}
 		wg.Wait()
 
-		apiTester(t, http.MethodPost, []byte("test"), "/api/v1/register", RegisterAPI, false, true)
+		apiTester(t, http.MethodPost, []byte("test"), "", "/api/v1/register", RegisterAPI, false, true)
 	}) {
 		return
 	}
@@ -145,12 +146,12 @@ func TestAPI(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				apiTester(t, http.MethodPost, test.AuthRequest, "/api/v1/login", LoginAPI, test.pass, false)
+				apiTester(t, http.MethodPost, test.AuthRequest, "", "/api/v1/login", LoginAPI, test.pass, false)
 			}()
 		}
 		wg.Wait()
 
-		apiTester(t, http.MethodPost, []byte("test"), "/api/v1/login", LoginAPI, false, true)
+		apiTester(t, http.MethodPost, []byte("test"), "", "/api/v1/login", LoginAPI, false, true)
 	}) {
 		return
 	}
@@ -174,9 +175,9 @@ func TestAPI(t *testing.T) {
 
 	if !t.Run("Expressions", func(t *testing.T) {
 		for _, test := range exprTests {
-			apiTester(t, http.MethodPost, test.CalcRequest, "/api/v1/calculate", Calculate, test.pass, false)
+			apiTester(t, http.MethodPost, test.CalcRequest, "", "/api/v1/calculate", Calculate, test.pass, false)
 		}
-		apiTester(t, http.MethodPost, []byte("test"), "/api/v1/Cclculate", Calculate, false, true)
+		apiTester(t, http.MethodPost, []byte("test"), "", "/api/v1/calculate", Calculate, false, true)
 	}) {
 		return
 	}

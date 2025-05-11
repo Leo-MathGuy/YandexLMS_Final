@@ -28,14 +28,14 @@ type User struct {
 }
 
 type Expression struct {
-	ID       uint
-	UID      uint
-	Expr     string
-	Result   float64
-	TaskID   uint
-	Finished bool
+	ID       uint    `json:"id"`
+	UID      uint    `json:"-"`
+	Expr     string  `json:"-"`
+	Result   float64 `json:"result"`
+	TaskID   uint    `json:"-"`
+	Finished bool    `json:"status"`
 
-	Gen *processing.Node
+	Gen *processing.Node `json:"-"`
 }
 
 type Expressions struct {
@@ -186,6 +186,12 @@ func CreateToken(username string) (string, error) {
 	return tokenString, nil
 }
 
+// Checks token for validity and returns the user if it is valid
+// Returns:
+//
+//	error, nil - Valid
+//	nil, nil - Expired
+//	nil, error - error
 func CheckToken(db *sql.DB, token string) (*User, error) {
 	t, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
 		return secretKey, nil
@@ -314,6 +320,32 @@ func CheckExpressions(db *sql.DB, e *Expressions, t *Tasks) {
 			v.Result = *t.T[v.TaskID].Left
 		}
 	}
+}
+
+func GetExpressionsForUser(db *sql.DB, user *User) ([]*Expression, error) {
+	rows, err := db.Query("SELECT id, result, done FROM EXPRESSIONS WHERE uid=?", user.ID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*Expression, 0)
+	for rows.Next() {
+		expr := Expression{}
+		if err := rows.Scan(&expr.ID, &expr.Result, &expr.Finished); err != nil {
+			return result, err
+		}
+		result = append(result, &expr)
+	}
+
+	return result, nil
+}
+
+func GetExpressionForUser(db *sql.DB, user *User, id int) (Expression, error) {
+	rows := db.QueryRow("SELECT id, result, done FROM EXPRESSIONS WHERE uid=? AND id=?", user.ID, id)
+	result := Expression{}
+	err := rows.Scan(&result.ID, &result.Result, &result.Finished)
+	return result, err
 }
 
 // MARK: Tasks

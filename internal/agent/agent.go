@@ -99,8 +99,6 @@ func createWorker(ctx context.Context, client pb.TasksClient, id int) {
 				}
 				_, err = client.SubmitTask(ctx, &pb.TaskSubmit{Id: resp.Id, Result: result, Error: er})
 
-				fmt.Printf("%f %s %f = %f\n", resp.Left, resp.Operator, resp.Right, result)
-
 				if err == nil {
 					break
 				}
